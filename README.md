@@ -1,7 +1,7 @@
 # PixelGrab
 
 <p align="center">
-  <img src="dist/app_icon.png" width="128" alt="PixelGrab Icon">
+  <img src="app_icon.png" width="128" alt="PixelGrab Icon">
 </p>
 
 <p align="center">
@@ -98,7 +98,7 @@
 
 | 个人微信 | 微信收款码 | 支付宝收款码 |
 |:--------:|:----------:|:------------:|
-| <img src="dist/IMG_3994.JPG" width="200" /> | <img src="dist/IMG_3995.JPG" width="200" /> | <img src="dist/IMG_3996.JPG" width="200" /> |
+| <img src="IMG_3994.JPG" width="200" /> | <img src="IMG_3995.JPG" width="200" /> | <img src="IMG_3996.JPG" width="200" /> |
 | 扫码添加好友 | 微信赞赏 | 支付宝赞赏 |
 
 > 感谢每一位支持者，你的鼓励是项目持续更新的动力！
