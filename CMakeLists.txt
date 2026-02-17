@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(loong-pixelgrab
-  VERSION 1.0.6
+  VERSION 1.1.0
   DESCRIPTION "Cross-platform screen capture library"
   LANGUAGES C CXX
 )

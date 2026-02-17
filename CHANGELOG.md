@@ -4,6 +4,33 @@
 
 ---
 
+## v1.1.0
+
+### Highlights
+
+- **项目开源**：loong-pixelgrab 完整源码正式开源，包含跨平台截图库（Windows / macOS / Linux）、标注引擎、录屏模块及示例桌面应用。
+
+### New Features
+
+- **像素放大镜 API**：新增 `pixelgrab_get_magnifier()` 接口，以指定坐标为中心采样并放大像素区域（支持 2–32 倍），采用最近邻缩放算法，适用于颜色拾取器等精确取色场景。
+- **颜色拾取器增强**：拾色窗口新增 160×160 像素放大镜实时预览，中心像素高亮（黑框 + 白框双层标识），2×2 网格线辅助定位；支持 Shift 键切换 RGB / HEX 显示格式，Ctrl+C 一键复制颜色值。
+- **文字水印**：新增 `pixelgrab_watermark_apply_text()` 接口，支持自定义字体、大小、颜色（ARGB）、6 种位置预设（四角 / 居中 / 自定义坐标）、边距与旋转角度，跨平台实现（Windows GDI+ / macOS CoreText / Linux Cairo+Pango）。
+- **图片水印**：新增 `pixelgrab_watermark_apply_image()` 接口，支持将 Logo 或签名图片叠加到截图上，可控制叠加位置与透明度（Alpha 混合）。
+- **颜色格式转换工具**：新增 RGB ↔ HSV 互转（`pixelgrab_color_rgb_to_hsv` / `pixelgrab_color_hsv_to_rgb`）、RGB ↔ HEX 互转（`pixelgrab_color_to_hex` / `pixelgrab_color_from_hex`，支持 #RGB、#RRGGBB、#RRGGBBAA 格式）。
+
+### Improvements
+
+- **录屏水印双轨架构**：系统水印与用户自定义水印独立配置，互不干扰；用户水印以黑字白边样式、-25° 旋转角度、5 个实例随机入场飘移循环显示，GPU 与 CPU 双渲染路径均支持。
+- **水印平台支持检测**：新增 `pixelgrab_watermark_is_supported()` 接口，运行时查询当前平台是否支持水印渲染。
+- **错误码扩展**：新增 `kPixelGrabErrorWatermarkFailed` 错误码，精确报告水印操作失败原因。
+
+### Bug Fixes
+
+- **修复菜单截图与 F1 快捷键行为不一致**：从系统托盘右键菜单点击"截图"现在与 F1 快捷键行为完全一致，均显示顶部工具栏（截图/录屏/OCR）并进入选区模式。
+- **防止独立录屏期间误触发截图**：补齐录屏保护条件（`!g_standalone_recording`），防止在独立录屏过程中误触截图操作。
+
+---
+
 ## v1.0.7
 
 ### Bug Fixes
