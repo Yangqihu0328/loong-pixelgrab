@@ -1,0 +1,38 @@
+// Application icon resource
+// IDI_APPICON must match the ID used in LoadIcon() calls
+#define IDI_APPICON 101
+
+IDI_APPICON ICON "app_icon.ico"
+
+// Version information — values come from CMake via pixelgrab/version.h
+#include <winver.h>
+#include "pixelgrab/version.h"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION    PIXELGRAB_VERSION_MAJOR,PIXELGRAB_VERSION_MINOR,PIXELGRAB_VERSION_PATCH,0
+ PRODUCTVERSION PIXELGRAB_VERSION_MAJOR,PIXELGRAB_VERSION_MINOR,PIXELGRAB_VERSION_PATCH,0
+ FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+ FILEFLAGS      0
+ FILEOS         VOS_NT_WINDOWS32
+ FILETYPE       VFT_APP
+ FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName",      "PixelGrab"
+      VALUE "FileDescription",  "PixelGrab - Screenshot / Annotation / Pin Tool"
+      VALUE "FileVersion",      PIXELGRAB_VERSION_STRING
+      VALUE "InternalName",     "PixelGrab"
+      VALUE "OriginalFilename", "PixelGrab.exe"
+      VALUE "ProductName",      "PixelGrab"
+      VALUE "ProductVersion",   PIXELGRAB_VERSION_STRING
+      VALUE "LegalCopyright",   "Copyright 2026 The PixelGrab Authors"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1200
+  END
+END

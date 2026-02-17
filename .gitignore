@@ -1,0 +1,76 @@
+# ===========================
+# Build artifacts
+# ===========================
+build/
+out/
+cmake-build-*/
+
+# ===========================
+# IDE & Editor
+# ===========================
+.vs/
+.vscode/
+.cursor/
+*.swp
+*.swo
+*~
+.idea/
+*.user
+*.suo
+*.ncb
+*.sdf
+*.opensdf
+*.cachefile
+.cache/
+compile_commands.json
+
+# ===========================
+# OS generated files
+# ===========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ===========================
+# Compiled binaries
+# ===========================
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+*.o
+*.obj
+*.pdb
+*.ilk
+*.exp
+
+# ===========================
+# Package files
+# ===========================
+*.zip
+*.tar.gz
+*.nupkg
+*.msi
+
+# ===========================
+# Memory Bank (project docs, not source)
+# ===========================
+memory-bank/
+
+# ===========================
+# CMake generated
+# ===========================
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+_deps/
+
+# ===========================
+# CPack output
+# ===========================
+_CPack_Packages/
