@@ -6,6 +6,9 @@
 
 #ifdef _WIN32
 
+#include <fstream>
+#include <string>
+
 
 Application& Application::instance() {
   static Application inst;
@@ -167,6 +170,44 @@ bool Application::Init() {
   }
   pixelgrab_enable_dpi_awareness(ctx_);
   pixelgrab_history_set_max_count(ctx_, 20);
+  {
+    wchar_t exe_dir[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exe_dir, MAX_PATH);
+    for (int i = static_cast<int>(wcslen(exe_dir)) - 1; i >= 0; --i) {
+      if (exe_dir[i] == L'\\' || exe_dir[i] == L'/') {
+        exe_dir[i + 1] = L'\0';
+        break;
+      }
+    }
+    wcscat_s(exe_dir, L"pixelgrab.cfg");
+
+    char path_utf8[MAX_PATH * 3] = {};
+    WideCharToMultiByte(CP_UTF8, 0, exe_dir, -1, path_utf8, sizeof(path_utf8),
+                        nullptr, nullptr);
+
+    std::string provider = "baidu", app_id, secret_key;
+    std::ifstream cfg(path_utf8);
+    if (cfg.is_open()) {
+      std::string line;
+      while (std::getline(cfg, line)) {
+        if (line.empty() || line[0] == '#' || line[0] == ';') continue;
+        auto eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        std::string key = line.substr(0, eq);
+        std::string val = line.substr(eq + 1);
+        while (!key.empty() && key.back() == ' ') key.pop_back();
+        while (!val.empty() && val.front() == ' ') val.erase(val.begin());
+        if (key == "provider")   provider = val;
+        else if (key == "app_id")     app_id = val;
+        else if (key == "secret_key") secret_key = val;
+      }
+    }
+
+    if (!app_id.empty() && !secret_key.empty()) {
+      pixelgrab_translate_set_config(ctx_, provider.c_str(),
+                                     app_id.c_str(), secret_key.c_str());
+    }
+  }
 
   overlay_.RestoreSystemCursors();
 

@@ -5,6 +5,11 @@
 
 #ifdef _WIN32
 
+#include <cstring>
+#include <string>
+#include <thread>
+#include <vector>
+
 #include "platform/windows/win_application.h"
 
 LRESULT CALLBACK SelectionManager::MouseHookProc(int code, WPARAM wp, LPARAM lp) {
@@ -323,9 +328,7 @@ bool SelectionManager::DispatchF1Mode(RECT rc) {
   }
   if (app.GetF1Toolbar().ActiveId() == kF1OCR) {
     app.GetF1Toolbar().Dismiss();
-    MessageBoxW(nullptr,
-        T(kStr_MsgOCRDeveloping),
-        L"PixelGrab", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+    PerformOcr(app, rc);
     return true;
   }
   app.GetF1Toolbar().Dismiss();
@@ -404,6 +407,147 @@ void SelectionManager::HandleCancel() {
   app.GetF1Toolbar().Dismiss();
   std::printf("  Selection cancelled.\n");
   app.About().ShowPendingUpdate();
+}
+
+void SelectionManager::PerformOcr(Application& app, RECT rc) {
+  int w = static_cast<int>(rc.right - rc.left);
+  int h = static_cast<int>(rc.bottom - rc.top);
+  if (w <= 0 || h <= 0) return;
+
+  SetCursor(LoadCursor(nullptr, IDC_WAIT));
+
+  PixelGrabImage* img = pixelgrab_capture_region(
+      app.Ctx(), static_cast<int>(rc.left), static_cast<int>(rc.top), w, h);
+  if (!img) {
+    SetCursor(LoadCursor(nullptr, IDC_ARROW));
+    MessageBoxW(nullptr, T(kStr_MsgOCRFailed),
+                L"PixelGrab", MB_OK | MB_ICONERROR | MB_TOPMOST);
+    return;
+  }
+
+  char* text = nullptr;
+  PixelGrabError err = pixelgrab_ocr_recognize(app.Ctx(), img, nullptr, &text);
+  pixelgrab_image_destroy(img);
+  SetCursor(LoadCursor(nullptr, IDC_ARROW));
+
+  if (err != kPixelGrabOk || !text || text[0] == '\0') {
+    if (text) pixelgrab_free_string(text);
+    MessageBoxW(nullptr, T(kStr_MsgOCRNoText),
+                L"PixelGrab", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
+    return;
+  }
+
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, text, -1, nullptr, 0);
+  std::vector<wchar_t> wtext(wlen);
+  MultiByteToWideChar(CP_UTF8, 0, text, -1, wtext.data(), wlen);
+  pixelgrab_free_string(text);
+
+  if (OpenClipboard(nullptr)) {
+    EmptyClipboard();
+    HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, wlen * sizeof(wchar_t));
+    if (hg) {
+      std::memcpy(GlobalLock(hg), wtext.data(), wlen * sizeof(wchar_t));
+      GlobalUnlock(hg);
+      SetClipboardData(CF_UNICODETEXT, hg);
+    }
+    CloseClipboard();
+  }
+
+  std::wstring msg = wtext.data();
+  msg += L"\n\n(";
+  msg += T(kStr_MsgOCRCopied);
+  msg += L")";
+
+  // Append hint: "Yes" = translate, "No" = close.
+  msg += L"\n\n[";
+  msg += T(kStr_BtnTranslate);
+  msg += L" → Yes]";
+
+  int choice = MessageBoxW(nullptr, msg.c_str(), L"PixelGrab OCR",
+                           MB_YESNO | MB_ICONINFORMATION | MB_TOPMOST |
+                               MB_DEFBUTTON2);
+  if (choice == IDYES) {
+    // Convert wtext back to UTF-8 for translation API.
+    int u8len = WideCharToMultiByte(CP_UTF8, 0, wtext.data(), -1, nullptr, 0,
+                                    nullptr, nullptr);
+    std::string u8text(u8len - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wtext.data(), -1, &u8text[0], u8len,
+                        nullptr, nullptr);
+    PerformTranslate(app, u8text);
+  }
+}
+
+void SelectionManager::PerformTranslate(Application& app,
+                                        const std::string& text) {
+  if (!pixelgrab_translate_is_supported(app.Ctx())) {
+    MessageBoxW(nullptr, T(kStr_MsgTranslateNotConfigured), L"PixelGrab",
+                MB_OK | MB_ICONWARNING | MB_TOPMOST);
+    return;
+  }
+
+  SetCursor(LoadCursor(nullptr, IDC_WAIT));
+
+  // Auto-detect: if text contains CJK characters, translate to English;
+  // otherwise translate to Chinese.
+  bool has_cjk = false;
+  for (size_t i = 0; i < text.size(); ++i) {
+    auto c = static_cast<unsigned char>(text[i]);
+    // UTF-8 CJK Unified Ideographs start with 0xE4..0xE9 first byte.
+    if (c >= 0xE4 && c <= 0xE9 && i + 2 < text.size()) {
+      has_cjk = true;
+      break;
+    }
+  }
+  const char* target = has_cjk ? "en" : "zh";
+
+  char* translated = nullptr;
+  PixelGrabError err = kPixelGrabOk;
+
+  std::thread worker([&] {
+    err = pixelgrab_translate_text(app.Ctx(), text.c_str(), "auto", target,
+                                  &translated);
+  });
+  worker.join();
+
+  SetCursor(LoadCursor(nullptr, IDC_ARROW));
+
+  if (err != kPixelGrabOk || !translated || translated[0] == '\0') {
+    if (translated) pixelgrab_free_string(translated);
+    const char* detail = pixelgrab_get_last_error_message(app.Ctx());
+    std::wstring errmsg = T(kStr_MsgTranslateFailed);
+    if (detail && detail[0]) {
+      int dlen = MultiByteToWideChar(CP_UTF8, 0, detail, -1, nullptr, 0);
+      std::vector<wchar_t> wdetail(dlen);
+      MultiByteToWideChar(CP_UTF8, 0, detail, -1, wdetail.data(), dlen);
+      errmsg += L"\n\n";
+      errmsg += wdetail.data();
+    }
+    MessageBoxW(nullptr, errmsg.c_str(), L"PixelGrab",
+                MB_OK | MB_ICONERROR | MB_TOPMOST);
+    return;
+  }
+
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, translated, -1, nullptr, 0);
+  std::vector<wchar_t> wtranslated(wlen);
+  MultiByteToWideChar(CP_UTF8, 0, translated, -1, wtranslated.data(), wlen);
+  pixelgrab_free_string(translated);
+
+  if (OpenClipboard(nullptr)) {
+    EmptyClipboard();
+    HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, wlen * sizeof(wchar_t));
+    if (hg) {
+      std::memcpy(GlobalLock(hg), wtranslated.data(), wlen * sizeof(wchar_t));
+      GlobalUnlock(hg);
+      SetClipboardData(CF_UNICODETEXT, hg);
+    }
+    CloseClipboard();
+  }
+
+  std::wstring msg = wtranslated.data();
+  msg += L"\n\n(";
+  msg += T(kStr_MsgOCRCopied);
+  msg += L")";
+  MessageBoxW(nullptr, msg.c_str(), L"PixelGrab", MB_OK | MB_ICONINFORMATION | MB_TOPMOST);
 }
 
 #endif

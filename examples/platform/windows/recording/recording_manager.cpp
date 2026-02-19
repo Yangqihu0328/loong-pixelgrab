@@ -37,6 +37,14 @@ LRESULT CALLBACK RecordingManager::RecCtrlWndProc(HWND hwnd, UINT msg,
       wsprintfW(buf, L"%s %02d:%02d", icon, mins, secs);
       SetWindowTextW(self.rec_ctrl_label_, buf);
     }
+    // Re-assert topmost z-order so the control bar stays visible even when
+    // the user interacts with other windows or the taskbar.
+    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (self.rec_border_) {
+      SetWindowPos(self.rec_border_, HWND_TOPMOST, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
     return 0;
   }
 
@@ -181,7 +189,7 @@ void RecordingManager::StartStandalone(RECT rc) {
   if (bar_y + bar_h > scr_h) bar_y = static_cast<int>(rc.top) - bar_h - 4;
 
   rec_ctrl_wnd_ = CreateWindowExW(
-      WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+      WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
       kRecCtrlClass, nullptr, WS_POPUP | WS_VISIBLE,
       bar_x, bar_y, bar_w, bar_h,
       nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
@@ -571,6 +579,9 @@ LRESULT CALLBACK RecordingManager::CountdownWndProc(HWND hwnd, UINT msg,
       self.StartStandalone(rec_rc);
     } else {
       InvalidateRect(hwnd, nullptr, TRUE);
+      // Re-assert topmost so the countdown stays visible during user interaction.
+      SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
     return 0;
   }
@@ -588,7 +599,7 @@ void RecordingManager::ShowCountdown(RECT rc) {
   int wy = cy - kCountdownSize / 2;
 
   countdown_wnd_ = CreateWindowExW(
-      WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED,
+      WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_NOACTIVATE,
       kCountdownClass, nullptr, WS_POPUP | WS_VISIBLE,
       wx, wy, kCountdownSize, kCountdownSize,
       nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);

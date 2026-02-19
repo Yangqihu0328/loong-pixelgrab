@@ -141,6 +141,20 @@ static const wchar_t* kStrings[kLangCount][kStringCount] = {
   L"RGB\uFF1A%d, %d, %d",            // kStr_PkRGBFmt:    RGB：%d, %d, %d
   L"HEX\uFF1A%s",                    // kStr_PkHEXFmt:    HEX：%s
   L"Ctrl+C \x590D\x5236 | Shift \x5207\x6362",  // kStr_PkHint: Ctrl+C 复制 | Shift 切换
+
+  // -- OCR --
+  L"\x672A\x8BC6\x522B\x5230\x6587\x5B57",       // kStr_MsgOCRNoText:  未识别到文字
+  L"OCR \x8BC6\x522B\x5931\x8D25",                // kStr_MsgOCRFailed:  OCR 识别失败
+  L"\x8BC6\x522B\x7ED3\x679C\x5DF2\x590D\x5236"  // kStr_MsgOCRCopied:  识别结果已复制到剪贴板
+    L"\x5230\x526A\x8D34\x677F",
+
+  // -- Translation --
+  L"\x7FFB\x8BD1",                                 // kStr_BtnTranslate:              翻译
+  L"\x6B63\x5728\x7FFB\x8BD1...",                  // kStr_MsgTranslating:            正在翻译...
+  L"\x7FFB\x8BD1\x5931\x8D25",                     // kStr_MsgTranslateFailed:        翻译失败
+  L"\x7FFB\x8BD1\x672A\x914D\x7F6E\xFF0C"          // kStr_MsgTranslateNotConfigured: 翻译未配置，
+    L"\x8BF7\x5728\x8BBE\x7F6E\x4E2D\x586B\x5199"  //   请在设置中填写
+    L"\x767E\x5EA6\x7FFB\x8BD1 API \x5BC6\x94A5",   //   百度翻译 API 密钥
 },
 
 // -----------------------------------------------------------------
@@ -260,6 +274,17 @@ static const wchar_t* kStrings[kLangCount][kStringCount] = {
   L"RGB: %d, %d, %d",       // kStr_PkRGBFmt
   L"HEX: %s",               // kStr_PkHEXFmt
   L"Ctrl+C Copy | Shift Toggle",  // kStr_PkHint
+
+  // -- OCR --
+  L"No text recognized",           // kStr_MsgOCRNoText
+  L"OCR recognition failed",       // kStr_MsgOCRFailed
+  L"OCR result copied to clipboard",  // kStr_MsgOCRCopied
+
+  // -- Translation --
+  L"Translate",                    // kStr_BtnTranslate
+  L"Translating...",               // kStr_MsgTranslating
+  L"Translation failed",           // kStr_MsgTranslateFailed
+  L"Translation not configured. Please set Baidu Translate API keys in Settings.",  // kStr_MsgTranslateNotConfigured
 },
 
 };  // end kStrings

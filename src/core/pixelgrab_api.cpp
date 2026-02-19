@@ -1079,6 +1079,130 @@ PixelGrabError pixelgrab_audio_get_default_device(
 }
 
 // ---------------------------------------------------------------------------
+// OCR
+// ---------------------------------------------------------------------------
+
+int pixelgrab_ocr_is_supported(PixelGrabContext* ctx) {
+  if (!ctx) return 0;
+  auto* backend = ctx->impl.ocr_backend();
+  return (backend && backend->IsSupported()) ? 1 : 0;
+}
+
+PixelGrabError pixelgrab_ocr_recognize(PixelGrabContext* ctx,
+                                       const PixelGrabImage* image,
+                                       const char* language,
+                                       char** out_text) {
+  if (!ctx || !image || !out_text) return kPixelGrabErrorInvalidParam;
+  *out_text = nullptr;
+
+  auto* backend = ctx->impl.ocr_backend();
+  if (!backend || !backend->IsSupported()) {
+    ctx->impl.SetError(kPixelGrabErrorNotSupported, "OCR not supported");
+    return kPixelGrabErrorNotSupported;
+  }
+
+  const uint8_t* data = image->impl->data();
+  int w = image->impl->width();
+  int h = image->impl->height();
+  int stride = image->impl->stride();
+
+  if (!data || w <= 0 || h <= 0) {
+    ctx->impl.SetError(kPixelGrabErrorInvalidParam, "Invalid image for OCR");
+    return kPixelGrabErrorInvalidParam;
+  }
+
+  std::string text = backend->RecognizeText(data, w, h, stride, language);
+  if (text.empty()) {
+    ctx->impl.SetError(kPixelGrabErrorOcrFailed, "OCR returned no text");
+    return kPixelGrabErrorOcrFailed;
+  }
+
+  char* buf = static_cast<char*>(std::malloc(text.size() + 1));
+  if (!buf) {
+    ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                       "Failed to allocate OCR result");
+    return kPixelGrabErrorOutOfMemory;
+  }
+  std::memcpy(buf, text.c_str(), text.size() + 1);
+  *out_text = buf;
+
+  ctx->impl.ClearError();
+  return kPixelGrabOk;
+}
+
+// ---------------------------------------------------------------------------
+// Translation
+// ---------------------------------------------------------------------------
+
+PixelGrabError pixelgrab_translate_set_config(PixelGrabContext* ctx,
+                                              const char* provider,
+                                              const char* app_id,
+                                              const char* secret_key) {
+  if (!ctx) return kPixelGrabErrorInvalidParam;
+  if (!app_id || !secret_key) return kPixelGrabErrorInvalidParam;
+
+  auto* backend = ctx->impl.translate_backend();
+  if (!backend) {
+    ctx->impl.SetError(kPixelGrabErrorNotSupported,
+                       "Translation backend not available");
+    return kPixelGrabErrorNotSupported;
+  }
+
+  pixelgrab::internal::TranslateConfig config;
+  config.provider = provider ? provider : "baidu";
+  config.app_id = app_id;
+  config.secret_key = secret_key;
+  backend->SetConfig(config);
+
+  ctx->impl.ClearError();
+  return kPixelGrabOk;
+}
+
+int pixelgrab_translate_is_supported(PixelGrabContext* ctx) {
+  if (!ctx) return 0;
+  auto* backend = ctx->impl.translate_backend();
+  return (backend && backend->IsSupported()) ? 1 : 0;
+}
+
+PixelGrabError pixelgrab_translate_text(PixelGrabContext* ctx, const char* text,
+                                        const char* source_lang,
+                                        const char* target_lang,
+                                        char** out_translated) {
+  if (!ctx || !text || !target_lang || !out_translated)
+    return kPixelGrabErrorInvalidParam;
+  *out_translated = nullptr;
+
+  auto* backend = ctx->impl.translate_backend();
+  if (!backend || !backend->IsSupported()) {
+    ctx->impl.SetError(kPixelGrabErrorNotSupported,
+                       "Translation not configured");
+    return kPixelGrabErrorNotSupported;
+  }
+
+  std::string result =
+      backend->Translate(text, source_lang ? source_lang : "auto", target_lang);
+  if (result.empty()) {
+    const auto& detail = backend->last_error_detail();
+    ctx->impl.SetError(kPixelGrabErrorTranslateFailed,
+                       detail.empty() ? "Translation returned no result"
+                                      : detail);
+    return kPixelGrabErrorTranslateFailed;
+  }
+
+  char* buf = static_cast<char*>(std::malloc(result.size() + 1));
+  if (!buf) {
+    ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                       "Failed to allocate translation result");
+    return kPixelGrabErrorOutOfMemory;
+  }
+  std::memcpy(buf, result.c_str(), result.size() + 1);
+  *out_translated = buf;
+
+  ctx->impl.ClearError();
+  return kPixelGrabOk;
+}
+
+// ---------------------------------------------------------------------------
 // Version information
 // ---------------------------------------------------------------------------
 

@@ -4,6 +4,25 @@
 
 ---
 
+## v1.2.0
+
+### Highlights
+
+- **OCR + 翻译**：集成 Tesseract 5 跨平台 OCR 引擎 + 百度翻译 API，截图后一键识别文字并翻译。
+
+### New Features
+
+- **OCR 文字识别（Tesseract 5）**：集成 Tesseract 5.5.2 开源 OCR 引擎，替代原有的 Windows.Media.Ocr (WinRT) 实现。支持中文简体（chi_sim）和英文（eng）识别，使用 tessdata_best 高精度模型（~28MB）。BGRA→灰度手动转换，无需 OpenCV 依赖。tessdata 路径自动检测（exe 同级目录 / TESSDATA_PREFIX 环境变量）。单一 `TesseractOcrBackend` 全平台通用，替代原先 3 个平台特定实现（win/mac/linux）。
+- **翻译功能（百度翻译 API）**：OCR 识别后一键翻译，自动检测文本语言方向（CJK→英文 / 其他→中文）。基于模板方法模式实现 `TranslateBackend` 抽象层，平台子类只需实现 `HttpPost()` 和 `ComputeMD5()`。Windows 平台使用 WinHTTP + Wincrypt 实现。翻译结果自动复制到剪贴板。配置文件 `pixelgrab.cfg` 管理百度翻译 API 密钥。新增 3 个 C API：`pixelgrab_translate_set_config`、`pixelgrab_translate_is_supported`、`pixelgrab_translate_text`。
+
+### Improvements
+
+- **翻译错误诊断增强**：翻译失败时 MessageBox 显示具体错误原因（百度 API 错误码、HTTP 状态码、WinHTTP 网络错误等），不再只显示笼统的"翻译失败"。错误链路从 `TranslateBackend` → `pixelgrab_translate_text` → UI 完整传递。
+- **打包脚本适配 OCR/翻译**：CMake install 规则新增 20 个 Tesseract/Leptonica 第三方 DLL、tessdata 模型目录、`pixelgrab.cfg.example` 翻译配置模板的安装，确保 NSIS 安装包和 ZIP 分发包可直接运行。
+- **错误码扩展**：新增 `kPixelGrabErrorTranslateFailed` 错误码，精确报告翻译操作失败原因。
+
+---
+
 ## v1.1.0
 
 ### Highlights
@@ -28,7 +47,6 @@
 
 - **修复菜单截图与 F1 快捷键行为不一致**：从系统托盘右键菜单点击"截图"现在与 F1 快捷键行为完全一致，均显示顶部工具栏（截图/录屏/OCR）并进入选区模式。
 - **防止独立录屏期间误触发截图**：补齐录屏保护条件（`!g_standalone_recording`），防止在独立录屏过程中误触截图操作。
-
 ---
 
 ## v1.0.7

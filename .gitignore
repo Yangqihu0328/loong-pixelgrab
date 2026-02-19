@@ -56,6 +56,16 @@ ehthumbs.db
 *.msi
 
 # ===========================
+# Credentials / config (contains API keys)
+# ===========================
+pixelgrab.cfg
+
+# ===========================
+# OCR model data (too large for git)
+# ===========================
+tessdata/
+
+# ===========================
 # Memory Bank (project docs, not source)
 # ===========================
 memory-bank/

@@ -127,11 +127,52 @@ foreach(_qr IN LISTS _qr_files)
   endif()
 endforeach()
 
-# Install rules for PixelGrab application
+# ===================================================================
+# Install rules
+# ===================================================================
+
 install(TARGETS PixelGrab RUNTIME DESTINATION bin)
+
 if(WIN32)
+  # pixelgrab.dll
   install(FILES $<TARGET_FILE:pixelgrab> DESTINATION bin)
+
+  # Third-party DLLs (Tesseract, Leptonica, OpenSSL, etc.)
+  # These are copied to the build output dir by vcpkg at build time.
+  set(_pg_bin_dir "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+  install(CODE "
+    set(_config \"\${CMAKE_INSTALL_CONFIG_NAME}\")
+    if(NOT _config)
+      set(_config \"Release\")
+    endif()
+    file(GLOB _dlls \"${_pg_bin_dir}/\${_config}/*.dll\")
+    foreach(_dll \${_dlls})
+      get_filename_component(_name \${_dll} NAME)
+      if(NOT \${_name} STREQUAL \"pixelgrab.dll\")
+        file(INSTALL \${_dll} DESTINATION \"\${CMAKE_INSTALL_PREFIX}/bin\")
+      endif()
+    endforeach()
+  ")
+
+  # tessdata/ (OCR models — chi_sim + eng)
+  install(CODE "
+    set(_config \"\${CMAKE_INSTALL_CONFIG_NAME}\")
+    if(NOT _config)
+      set(_config \"Release\")
+    endif()
+    set(_tessdata \"${_pg_bin_dir}/\${_config}/tessdata\")
+    if(IS_DIRECTORY \${_tessdata})
+      file(INSTALL \${_tessdata} DESTINATION \"\${CMAKE_INSTALL_PREFIX}/bin\")
+    endif()
+  ")
 endif()
+
+# pixelgrab.cfg.example (translation config template)
+if(EXISTS "${PROJECT_SOURCE_DIR}/pixelgrab.cfg.example")
+  install(FILES "${PROJECT_SOURCE_DIR}/pixelgrab.cfg.example" DESTINATION bin)
+endif()
+
+# QR code images
 install(DIRECTORY DESTINATION bin/qrcode)
 foreach(_qr IN LISTS _qr_files)
   if(EXISTS "${_qr}")

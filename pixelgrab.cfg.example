@@ -1,0 +1,6 @@
+# PixelGrab Translation Config
+# Copy this file to pixelgrab.cfg (next to PixelGrab.exe) and fill in your keys.
+
+provider   = baidu
+app_id     = YOUR_APP_ID
+secret_key = YOUR_SECRET_KEY

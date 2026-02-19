@@ -6,6 +6,8 @@
 
 #ifdef _WIN32
 
+#include <string>
+
 #include "platform/windows/win_app_defs.h"
 
 class SelectionManager {
@@ -21,6 +23,8 @@ class SelectionManager {
   void HandleMove(int x, int y);
   void HandleRegionSelect(int x1, int y1, int x2, int y2);
   bool DispatchF1Mode(RECT rc);
+  static void PerformOcr(class Application& app, RECT rc);
+  static void PerformTranslate(class Application& app, const std::string& text);
   RECT GetVisibleWindowRect(HWND hwnd);
 
   bool IsSelecting() const { return selecting_; }

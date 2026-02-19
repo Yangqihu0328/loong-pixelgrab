@@ -118,6 +118,17 @@ enum StringId {
   kStr_PkHEXFmt,
   kStr_PkHint,
 
+  // OCR
+  kStr_MsgOCRNoText,
+  kStr_MsgOCRFailed,
+  kStr_MsgOCRCopied,
+
+  // Translation
+  kStr_BtnTranslate,
+  kStr_MsgTranslating,
+  kStr_MsgTranslateFailed,
+  kStr_MsgTranslateNotConfigured,
+
   kStringCount  // sentinel — must be last
 };
 

@@ -71,6 +71,8 @@ typedef enum PixelGrabError {
   kPixelGrabErrorEncoderNotAvailable = -17,   ///< Video encoder not available
   kPixelGrabErrorRecordInProgress = -18,      ///< A recording is already active
   kPixelGrabErrorWatermarkFailed = -19,       ///< Watermark operation failed
+  kPixelGrabErrorOcrFailed = -20,             ///< OCR recognition failed
+  kPixelGrabErrorTranslateFailed = -21,      ///< Translation operation failed
   kPixelGrabErrorUnknown = -99,
 } PixelGrabError;
 
@@ -927,6 +929,61 @@ PIXELGRAB_API int pixelgrab_audio_enumerate_devices(
 PIXELGRAB_API PixelGrabError pixelgrab_audio_get_default_device(
     PixelGrabContext* ctx, int is_input,
     PixelGrabAudioDeviceInfo* out_device);
+
+// ---------------------------------------------------------------------------
+// OCR (Optical Character Recognition)
+// ---------------------------------------------------------------------------
+
+/// Check if OCR is supported on this platform.
+/// @return Non-zero if supported.
+PIXELGRAB_API int pixelgrab_ocr_is_supported(PixelGrabContext* ctx);
+
+/// Recognize text in an image using OCR.
+///
+/// @param ctx       Initialized context.
+/// @param image     Source image to recognize text from.
+/// @param language  BCP-47 language tag (e.g. "zh-Hans-CN", "en-US").
+///                  Pass NULL for auto-detection from user profile.
+/// @param out_text  On success, receives a newly allocated UTF-8 string.
+///                  Caller must free with pixelgrab_free_string().
+///                  Set to NULL on failure.
+/// @return kPixelGrabOk on success.
+PIXELGRAB_API PixelGrabError pixelgrab_ocr_recognize(
+    PixelGrabContext* ctx, const PixelGrabImage* image,
+    const char* language, char** out_text);
+
+// ---------------------------------------------------------------------------
+// Translation
+// ---------------------------------------------------------------------------
+
+/// Configure the translation provider credentials.
+/// @param ctx         Initialized context.
+/// @param provider    Provider name (e.g. "baidu"). Pass NULL for default.
+/// @param app_id      Application ID from the translation service.
+/// @param secret_key  Secret key from the translation service.
+/// @return kPixelGrabOk on success.
+PIXELGRAB_API PixelGrabError pixelgrab_translate_set_config(
+    PixelGrabContext* ctx, const char* provider, const char* app_id,
+    const char* secret_key);
+
+/// Check if translation is supported (i.e. credentials are configured).
+/// @return Non-zero if supported.
+PIXELGRAB_API int pixelgrab_translate_is_supported(PixelGrabContext* ctx);
+
+/// Translate text from one language to another.
+///
+/// @param ctx             Initialized context.
+/// @param text            UTF-8 source text to translate.
+/// @param source_lang     Source language code (e.g. "en", "zh", "auto").
+///                        Pass NULL or "auto" for automatic detection.
+/// @param target_lang     Target language code (e.g. "zh", "en").
+/// @param out_translated  On success, receives a newly allocated UTF-8 string.
+///                        Caller must free with pixelgrab_free_string().
+///                        Set to NULL on failure.
+/// @return kPixelGrabOk on success.
+PIXELGRAB_API PixelGrabError pixelgrab_translate_text(
+    PixelGrabContext* ctx, const char* text, const char* source_lang,
+    const char* target_lang, char** out_translated);
 
 // ---------------------------------------------------------------------------
 // Version information

@@ -654,6 +654,30 @@ WatermarkRenderer* PixelGrabContextImpl::watermark_renderer() {
 }
 
 // ---------------------------------------------------------------------------
+// OCR backend (lazy init)
+// ---------------------------------------------------------------------------
+
+OcrBackend* PixelGrabContextImpl::ocr_backend() {
+  if (!ocr_backend_) {
+    PIXELGRAB_LOG_DEBUG("Lazy-initializing OCR backend");
+    ocr_backend_ = CreatePlatformOcrBackend();
+  }
+  return ocr_backend_.get();
+}
+
+// ---------------------------------------------------------------------------
+// Translation backend (lazy init)
+// ---------------------------------------------------------------------------
+
+TranslateBackend* PixelGrabContextImpl::translate_backend() {
+  if (!translate_backend_) {
+    PIXELGRAB_LOG_DEBUG("Lazy-initializing translation backend");
+    translate_backend_ = CreatePlatformTranslateBackend();
+  }
+  return translate_backend_.get();
+}
+
+// ---------------------------------------------------------------------------
 // Audio backend (lazy init)
 // ---------------------------------------------------------------------------
 

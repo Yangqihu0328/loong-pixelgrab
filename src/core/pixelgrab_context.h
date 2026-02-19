@@ -9,6 +9,8 @@
 
 #include "core/audio_backend.h"
 #include "core/capture_backend.h"
+#include "ocr/ocr_backend.h"
+#include "translate/translate_backend.h"
 #include "core/capture_history.h"
 #include "core/color_utils.h"
 #include "core/image.h"
@@ -116,6 +118,16 @@ class PixelGrabContextImpl {
   /// Get the watermark renderer (lazy-initialized).
   WatermarkRenderer* watermark_renderer();
 
+  // -- OCR --
+
+  /// Get the OCR backend (lazy-initialized).
+  OcrBackend* ocr_backend();
+
+  // -- Translation --
+
+  /// Get the translation backend (lazy-initialized).
+  TranslateBackend* translate_backend();
+
   // -- Audio --
 
   /// Get the audio backend (lazy-initialized).
@@ -149,6 +161,12 @@ class PixelGrabContextImpl {
 
   // Watermark renderer (lazy-initialized).
   std::unique_ptr<WatermarkRenderer> watermark_renderer_;
+
+  // OCR backend (lazy-initialized).
+  std::unique_ptr<OcrBackend> ocr_backend_;
+
+  // Translation backend (lazy-initialized).
+  std::unique_ptr<TranslateBackend> translate_backend_;
 
   // Audio backend (lazy-initialized).
   std::unique_ptr<AudioBackend> audio_backend_;
