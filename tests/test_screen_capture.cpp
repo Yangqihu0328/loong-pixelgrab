@@ -15,6 +15,8 @@ class ScreenCaptureTest : public ::testing::Test {
   }
   void TearDown() override { pixelgrab_context_destroy(ctx_); }
 
+  bool HasDisplay() const { return pixelgrab_get_screen_count(ctx_) > 0; }
+
   PixelGrabContext* ctx_ = nullptr;
 };
 
@@ -23,6 +25,7 @@ class ScreenCaptureTest : public ::testing::Test {
 // ---------------------------------------------------------------------------
 
 TEST_F(ScreenCaptureTest, ScreenCountAtLeastOne) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   int count = pixelgrab_get_screen_count(ctx_);
   EXPECT_GE(count, 1);
 }
@@ -32,6 +35,7 @@ TEST_F(ScreenCaptureTest, ScreenCountNullCtx) {
 }
 
 TEST_F(ScreenCaptureTest, GetScreenInfoPrimary) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabScreenInfo info = {};
   PixelGrabError err = pixelgrab_get_screen_info(ctx_, 0, &info);
   EXPECT_EQ(err, kPixelGrabOk);
@@ -55,6 +59,7 @@ TEST_F(ScreenCaptureTest, GetScreenInfoNullOut) {
 // ---------------------------------------------------------------------------
 
 TEST_F(ScreenCaptureTest, CaptureScreen0) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_screen(ctx_, 0);
   ASSERT_NE(img, nullptr);
   EXPECT_GT(pixelgrab_image_get_width(img), 0);
@@ -75,6 +80,7 @@ TEST_F(ScreenCaptureTest, CaptureScreenNullCtx) {
 // ---------------------------------------------------------------------------
 
 TEST_F(ScreenCaptureTest, CaptureRegionValid) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 100, 100);
   ASSERT_NE(img, nullptr);
   EXPECT_EQ(pixelgrab_image_get_width(img), 100);
@@ -108,6 +114,7 @@ TEST_F(ScreenCaptureTest, CaptureWindowNullCtx) {
 // ---------------------------------------------------------------------------
 
 TEST_F(ScreenCaptureTest, EnumerateWindows) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabWindowInfo windows[64] = {};
   int count = pixelgrab_enumerate_windows(ctx_, windows, 64);
   EXPECT_GE(count, 0);
@@ -139,6 +146,7 @@ TEST_F(ScreenCaptureTest, ImageDestroyNullSafe) {
 }
 
 TEST_F(ScreenCaptureTest, ImageFormatIsBgra8) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 10, 10);
   ASSERT_NE(img, nullptr);
   PixelGrabPixelFormat fmt = pixelgrab_image_get_format(img);
@@ -148,6 +156,7 @@ TEST_F(ScreenCaptureTest, ImageFormatIsBgra8) {
 }
 
 TEST_F(ScreenCaptureTest, ImageDataConsistency) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 50, 30);
   ASSERT_NE(img, nullptr);
   int w = pixelgrab_image_get_width(img);

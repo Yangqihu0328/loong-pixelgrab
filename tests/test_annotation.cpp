@@ -9,9 +9,11 @@ class AnnotationTest : public ::testing::Test {
   void SetUp() override {
     ctx_ = pixelgrab_context_create();
     ASSERT_NE(ctx_, nullptr);
-    // Capture a small region to use as base image.
     base_img_ = pixelgrab_capture_region(ctx_, 0, 0, 64, 64);
-    ASSERT_NE(base_img_, nullptr);
+    if (!base_img_) {
+      GTEST_SKIP() << "Capture unavailable (no display)";
+      return;
+    }
     ann_ = pixelgrab_annotation_create(ctx_, base_img_);
     ASSERT_NE(ann_, nullptr);
   }

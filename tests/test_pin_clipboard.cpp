@@ -14,6 +14,9 @@ class PinClipboardTest : public ::testing::Test {
     pixelgrab_pin_destroy_all(ctx_);
     pixelgrab_context_destroy(ctx_);
   }
+
+  bool HasDisplay() const { return pixelgrab_get_screen_count(ctx_) > 0; }
+
   PixelGrabContext* ctx_ = nullptr;
 };
 
@@ -22,6 +25,7 @@ class PinClipboardTest : public ::testing::Test {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, PinImageCreatesWindow) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 50, 50);
   ASSERT_NE(img, nullptr);
 
@@ -37,6 +41,7 @@ TEST_F(PinClipboardTest, PinImageCreatesWindow) {
 }
 
 TEST_F(PinClipboardTest, PinImageNullCtx) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 10, 10);
   ASSERT_NE(img, nullptr);
   EXPECT_EQ(pixelgrab_pin_image(nullptr, img, 0, 0), nullptr);
@@ -52,6 +57,7 @@ TEST_F(PinClipboardTest, PinImageNullImage) {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, PinTextCreatesWindow) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "Hello Test", 200, 200);
   EXPECT_NE(pin, nullptr);
   if (pin) {
@@ -89,6 +95,7 @@ TEST_F(PinClipboardTest, DestroyNullSafe) {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, OpacitySetGet) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "Opacity", 0, 0);
   ASSERT_NE(pin, nullptr);
 
@@ -125,6 +132,7 @@ TEST_F(PinClipboardTest, SetVisibleNullPin) {
 }
 
 TEST_F(PinClipboardTest, SetPositionValid) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "Pos", 0, 0);
   ASSERT_NE(pin, nullptr);
   EXPECT_EQ(pixelgrab_pin_set_position(pin, 300, 400), kPixelGrabOk);
@@ -132,6 +140,7 @@ TEST_F(PinClipboardTest, SetPositionValid) {
 }
 
 TEST_F(PinClipboardTest, SetSizeValid) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "Size", 0, 0);
   ASSERT_NE(pin, nullptr);
   EXPECT_EQ(pixelgrab_pin_set_size(pin, 200, 150), kPixelGrabOk);
@@ -139,6 +148,7 @@ TEST_F(PinClipboardTest, SetSizeValid) {
 }
 
 TEST_F(PinClipboardTest, SetVisibleValid) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "Vis", 0, 0);
   ASSERT_NE(pin, nullptr);
   EXPECT_EQ(pixelgrab_pin_set_visible(pin, 0), kPixelGrabOk);
@@ -160,6 +170,7 @@ TEST_F(PinClipboardTest, PinCountInitiallyZero) {
 }
 
 TEST_F(PinClipboardTest, DestroyAllClearsCount) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "Temp", 0, 0);
   ASSERT_NE(pin, nullptr);
   EXPECT_GE(pixelgrab_pin_count(ctx_), 1);
@@ -190,6 +201,7 @@ TEST_F(PinClipboardTest, EnumerateEmpty) {
 }
 
 TEST_F(PinClipboardTest, EnumerateMultiple) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* p1 = pixelgrab_pin_text(ctx_, "A", 0, 0);
   PixelGrabPinWindow* p2 = pixelgrab_pin_text(ctx_, "B", 50, 50);
   ASSERT_NE(p1, nullptr);
@@ -217,6 +229,7 @@ TEST_F(PinClipboardTest, EnumerateNullArray) {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, GetInfoImagePin) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 64, 48);
   ASSERT_NE(img, nullptr);
 
@@ -237,6 +250,7 @@ TEST_F(PinClipboardTest, GetInfoImagePin) {
 }
 
 TEST_F(PinClipboardTest, GetInfoTextPin) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "Info", 10, 20);
   ASSERT_NE(pin, nullptr);
 
@@ -253,6 +267,7 @@ TEST_F(PinClipboardTest, GetInfoNullPin) {
 }
 
 TEST_F(PinClipboardTest, GetInfoNullOut) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "X", 0, 0);
   ASSERT_NE(pin, nullptr);
   EXPECT_NE(pixelgrab_pin_get_info(pin, nullptr), kPixelGrabOk);
@@ -264,6 +279,7 @@ TEST_F(PinClipboardTest, GetInfoNullOut) {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, GetImageFromImagePin) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 32, 32);
   ASSERT_NE(img, nullptr);
 
@@ -281,6 +297,7 @@ TEST_F(PinClipboardTest, GetImageFromImagePin) {
 }
 
 TEST_F(PinClipboardTest, GetImageFromTextPinReturnsNull) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "NoImage", 0, 0);
   ASSERT_NE(pin, nullptr);
   EXPECT_EQ(pixelgrab_pin_get_image(pin), nullptr);
@@ -292,6 +309,7 @@ TEST_F(PinClipboardTest, GetImageNullPin) {
 }
 
 TEST_F(PinClipboardTest, SetImageUpdatesContent) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img1 = pixelgrab_capture_region(ctx_, 0, 0, 40, 40);
   ASSERT_NE(img1, nullptr);
 
@@ -317,6 +335,7 @@ TEST_F(PinClipboardTest, SetImageUpdatesContent) {
 }
 
 TEST_F(PinClipboardTest, SetImageNullPin) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 10, 10);
   ASSERT_NE(img, nullptr);
   EXPECT_NE(pixelgrab_pin_set_image(nullptr, img), kPixelGrabOk);
@@ -324,6 +343,7 @@ TEST_F(PinClipboardTest, SetImageNullPin) {
 }
 
 TEST_F(PinClipboardTest, SetImageOnTextPinFails) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "T", 0, 0);
   ASSERT_NE(pin, nullptr);
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 10, 10);
@@ -338,6 +358,7 @@ TEST_F(PinClipboardTest, SetImageOnTextPinFails) {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, SetVisibleAllHideShow) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabPinWindow* pin = pixelgrab_pin_text(ctx_, "VA", 0, 0);
   ASSERT_NE(pin, nullptr);
 
@@ -364,6 +385,7 @@ TEST_F(PinClipboardTest, SetVisibleAllNullCtx) {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, DuplicateImagePin) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 50, 50);
   ASSERT_NE(img, nullptr);
 
@@ -395,13 +417,14 @@ TEST_F(PinClipboardTest, DuplicateNullPin) {
 // ---------------------------------------------------------------------------
 
 TEST_F(PinClipboardTest, CaptureScreenExcludePins) {
-  // Just verify the function works without crashing.
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_screen_exclude_pins(ctx_, 0);
   EXPECT_NE(img, nullptr);
   if (img) pixelgrab_image_destroy(img);
 }
 
 TEST_F(PinClipboardTest, CaptureRegionExcludePins) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img =
       pixelgrab_capture_region_exclude_pins(ctx_, 0, 0, 100, 100);
   EXPECT_NE(img, nullptr);

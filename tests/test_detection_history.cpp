@@ -11,6 +11,9 @@ class DetectionHistoryTest : public ::testing::Test {
     ASSERT_NE(ctx_, nullptr);
   }
   void TearDown() override { pixelgrab_context_destroy(ctx_); }
+
+  bool HasDisplay() const { return pixelgrab_get_screen_count(ctx_) > 0; }
+
   PixelGrabContext* ctx_ = nullptr;
 };
 
@@ -82,7 +85,7 @@ TEST_F(DetectionHistoryTest, RecaptureLastEmpty) {
 }
 
 TEST_F(DetectionHistoryTest, HistoryAfterCapture) {
-  // Capture a region — this should add a history entry.
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 10, 20, 30, 40);
   ASSERT_NE(img, nullptr);
   pixelgrab_image_destroy(img);
@@ -99,6 +102,7 @@ TEST_F(DetectionHistoryTest, HistoryAfterCapture) {
 }
 
 TEST_F(DetectionHistoryTest, HistoryClear) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 0, 0, 10, 10);
   ASSERT_NE(img, nullptr);
   pixelgrab_image_destroy(img);
@@ -109,6 +113,7 @@ TEST_F(DetectionHistoryTest, HistoryClear) {
 }
 
 TEST_F(DetectionHistoryTest, HistorySetMaxCount) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   pixelgrab_history_set_max_count(ctx_, 2);
 
   // Capture 3 regions — only 2 should remain.
@@ -122,6 +127,7 @@ TEST_F(DetectionHistoryTest, HistorySetMaxCount) {
 }
 
 TEST_F(DetectionHistoryTest, RecaptureLast) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabImage* img = pixelgrab_capture_region(ctx_, 5, 5, 20, 20);
   ASSERT_NE(img, nullptr);
   pixelgrab_image_destroy(img);

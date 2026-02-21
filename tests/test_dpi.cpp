@@ -12,6 +12,9 @@ class DpiTest : public ::testing::Test {
     ASSERT_NE(ctx_, nullptr);
   }
   void TearDown() override { pixelgrab_context_destroy(ctx_); }
+
+  bool HasDisplay() const { return pixelgrab_get_screen_count(ctx_) > 0; }
+
   PixelGrabContext* ctx_ = nullptr;
 };
 
@@ -20,6 +23,7 @@ class DpiTest : public ::testing::Test {
 // ---------------------------------------------------------------------------
 
 TEST_F(DpiTest, EnableDpiAwareness) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   PixelGrabError err = pixelgrab_enable_dpi_awareness(ctx_);
   EXPECT_EQ(err, kPixelGrabOk);
 }
@@ -34,6 +38,7 @@ TEST_F(DpiTest, EnableDpiAwarenessNullCtx) {
 // ---------------------------------------------------------------------------
 
 TEST_F(DpiTest, GetDpiInfoScreen0) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   pixelgrab_enable_dpi_awareness(ctx_);
   PixelGrabDpiInfo info = {};
   PixelGrabError err = pixelgrab_get_dpi_info(ctx_, 0, &info);
@@ -60,6 +65,7 @@ TEST_F(DpiTest, GetDpiInfoInvalidScreen) {
 // ---------------------------------------------------------------------------
 
 TEST_F(DpiTest, LogicalToPhysical) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   pixelgrab_enable_dpi_awareness(ctx_);
   int px = 0, py = 0;
   PixelGrabError err =
@@ -70,6 +76,7 @@ TEST_F(DpiTest, LogicalToPhysical) {
 }
 
 TEST_F(DpiTest, PhysicalToLogical) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   pixelgrab_enable_dpi_awareness(ctx_);
   int lx = 0, ly = 0;
   PixelGrabError err =
@@ -80,6 +87,7 @@ TEST_F(DpiTest, PhysicalToLogical) {
 }
 
 TEST_F(DpiTest, RoundTripConversion) {
+  if (!HasDisplay()) GTEST_SKIP() << "No display available";
   pixelgrab_enable_dpi_awareness(ctx_);
   int px = 0, py = 0;
   int lx = 0, ly = 0;

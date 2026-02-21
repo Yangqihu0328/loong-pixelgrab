@@ -21,6 +21,8 @@ class AudioTest : public ::testing::Test {
     pixelgrab_context_destroy(ctx_);
   }
 
+  bool HasDisplay() const { return pixelgrab_get_screen_count(ctx_) > 0; }
+
   PixelGrabContext* ctx_ = nullptr;
 };
 
@@ -146,9 +148,8 @@ TEST_F(AudioTest, RecordConfigAudioSourceEnum) {
 // ---------------------------------------------------------------------------
 
 TEST_F(AudioTest, RecorderCreateWithAudioNone) {
-  // Creating a recorder with audio_source = None should work as before.
-  if (!pixelgrab_recorder_is_supported(ctx_)) {
-    GTEST_SKIP() << "Recorder not supported";
+  if (!pixelgrab_recorder_is_supported(ctx_) || !HasDisplay()) {
+    GTEST_SKIP() << "Recorder or display unavailable";
   }
 
   char path[128];
