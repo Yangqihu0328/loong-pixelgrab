@@ -145,8 +145,15 @@ target_link_libraries(pixelgrab PRIVATE spdlog::spdlog)
 
 # Tesseract OCR (optional)
 if(PIXELGRAB_ENABLE_OCR)
-  find_package(Tesseract CONFIG REQUIRED)
-  target_link_libraries(pixelgrab PRIVATE Tesseract::libtesseract)
+  find_package(Tesseract CONFIG QUIET)
+  if(Tesseract_FOUND)
+    target_link_libraries(pixelgrab PRIVATE Tesseract::libtesseract)
+  else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(TESSERACT REQUIRED tesseract)
+    target_include_directories(pixelgrab PRIVATE ${TESSERACT_INCLUDE_DIRS})
+    target_link_libraries(pixelgrab PRIVATE ${TESSERACT_LIBRARIES})
+  endif()
 endif()
 
 # Platform libraries
