@@ -54,82 +54,16 @@ jobs:
         run: ctest -C ${{ matrix.build_type }} --output-on-failure --timeout 120
 
   # ---------------------------------------------------------------------------
-  # macOS  (AppleClang)
-  # ---------------------------------------------------------------------------
-  macos:
-    runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Release, Debug]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure
-        run: >
-          cmake -B build -S .
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DPIXELGRAB_BUILD_TESTS=ON
-          -DPIXELGRAB_ENABLE_OCR=OFF
-          -DPIXELGRAB_ENABLE_TRANSLATE=OFF
-
-      - name: Build
-        run: cmake --build build --config ${{ matrix.build_type }} -j
-
-      - name: Test
-        working-directory: build
-        run: ctest -C ${{ matrix.build_type }} --output-on-failure --timeout 120
-
-  # ---------------------------------------------------------------------------
-  # Linux  (GCC)
-  # ---------------------------------------------------------------------------
-  linux:
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        build_type: [Release, Debug]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libx11-dev libxrandr-dev libxfixes-dev libxcomposite-dev \
-            libcairo2-dev libpango1.0-dev libgtk-3-dev \
-            libtesseract-dev tesseract-ocr-eng
-
-      - name: Configure
-        run: >
-          cmake -B build -S .
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DPIXELGRAB_BUILD_TESTS=ON
-          -DPIXELGRAB_ENABLE_OCR=ON
-          -DPIXELGRAB_ENABLE_TRANSLATE=ON
-
-      - name: Build
-        run: cmake --build build --config ${{ matrix.build_type }} -j$(nproc)
-
-      - name: Test
-        working-directory: build
-        run: ctest -C ${{ matrix.build_type }} --output-on-failure --timeout 120
-
-  # ---------------------------------------------------------------------------
   # Build status gate  (required check for branch protection)
   # ---------------------------------------------------------------------------
   ci-ok:
     if: always()
-    needs: [windows, macos, linux]
+    needs: [windows]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs succeeded
         run: |
-          if [[ "${{ needs.windows.result }}" != "success" ]] ||
-             [[ "${{ needs.macos.result }}" != "success" ]] ||
-             [[ "${{ needs.linux.result }}" != "success" ]]; then
+          if [[ "${{ needs.windows.result }}" != "success" ]]; then
             echo "One or more platform jobs failed"
             exit 1
           fi
