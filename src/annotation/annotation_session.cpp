@@ -77,18 +77,17 @@ int AnnotationSession::AddShape(std::unique_ptr<Shape> shape) {
   int id = next_id_++;
   shape->set_id(id);
 
-  // Record undo command.
   AnnotationCommand cmd;
   cmd.type = AnnotationCommand::Type::kAdd;
   cmd.shape_id = id;
-  cmd.shape_data = nullptr;  // For kAdd, undo = remove, no data needed to save.
+  cmd.shape_data = nullptr;
   undo_stack_.push_back(std::move(cmd));
 
-  // Clear redo stack on new action.
   redo_stack_.clear();
 
   shapes_.push_back(std::move(shape));
   dirty_ = true;
+  // Append-only: incremental path is still valid.
   return id;
 }
 
@@ -97,7 +96,6 @@ int AnnotationSession::RemoveShape(int shape_id) {
                          [shape_id](const auto& s) { return s->id() == shape_id; });
   if (it == shapes_.end()) return -1;
 
-  // Save shape for undo.
   AnnotationCommand cmd;
   cmd.type = AnnotationCommand::Type::kRemove;
   cmd.shape_id = shape_id;
@@ -105,8 +103,16 @@ int AnnotationSession::RemoveShape(int shape_id) {
   undo_stack_.push_back(std::move(cmd));
   redo_stack_.clear();
 
+  // Removing invalidates the snapshot if the removed shape was before it.
+  int removed_idx = static_cast<int>(it - shapes_.begin());
+  if (removed_idx < snapshot_count_) {
+    snapshot_image_.reset();
+    snapshot_count_ = 0;
+  }
+
   shapes_.erase(it);
   dirty_ = true;
+  full_redraw_ = true;
   return 0;
 }
 
@@ -144,6 +150,9 @@ bool AnnotationSession::Undo() {
   }
 
   dirty_ = true;
+  full_redraw_ = true;
+  snapshot_image_.reset();
+  snapshot_count_ = 0;
   return true;
 }
 
@@ -181,6 +190,9 @@ bool AnnotationSession::Redo() {
   }
 
   dirty_ = true;
+  full_redraw_ = true;
+  snapshot_image_.reset();
+  snapshot_count_ = 0;
   return true;
 }
 
@@ -210,23 +222,36 @@ std::unique_ptr<Image> AnnotationSession::Export() {
 void AnnotationSession::Redraw() {
   if (!base_image_ || !output_image_) return;
 
-  // 1. Copy base → output.
-  std::memcpy(output_image_->mutable_data(), base_image_->data(),
-              base_image_->data_size());
+  int total = static_cast<int>(shapes_.size());
+  int start_from = 0;
 
-  // 2. Render shapes in order, interleaving GDI+ segments with pixel effects.
-  //    This ensures that shapes drawn after a mosaic/blur appear ON TOP of it.
+  // Try the incremental path: if we have a valid snapshot covering
+  // shapes_[0..snapshot_count_-1] and only new shapes were appended,
+  // restore the snapshot and render only the new shapes.
+  bool can_incremental =
+      !full_redraw_ && snapshot_image_ && snapshot_count_ <= total;
+  if (can_incremental) {
+    // Verify none of the existing shapes were modified.
+    std::memcpy(output_image_->mutable_data(), snapshot_image_->data(),
+                snapshot_image_->data_size());
+    start_from = snapshot_count_;
+  } else {
+    // Full redraw from base.
+    std::memcpy(output_image_->mutable_data(), base_image_->data(),
+                base_image_->data_size());
+    start_from = 0;
+  }
+
   bool gfx_active = false;
 
-  for (const auto& shape : shapes_) {
+  for (int i = start_from; i < total; ++i) {
+    const auto& shape = shapes_[i];
     if (shape->type() == ShapeType::kMosaic ||
         shape->type() == ShapeType::kBlur) {
-      // Flush current GDI+ segment before applying pixel effect.
       if (gfx_active) {
         renderer_->EndRender();
         gfx_active = false;
       }
-      // Apply pixel effect directly on output pixels.
       if (shape->type() == ShapeType::kMosaic) {
         auto* m = static_cast<const MosaicEffect*>(shape.get());
         ApplyMosaic(output_image_.get(), m->x_, m->y_, m->w_, m->h_,
@@ -236,7 +261,6 @@ void AnnotationSession::Redraw() {
         ApplyBlur(output_image_.get(), b->x_, b->y_, b->w_, b->h_, b->radius_);
       }
     } else {
-      // Start a new GDI+ segment if not currently active.
       if (!gfx_active && renderer_) {
         if (renderer_->BeginRender(output_image_.get())) {
           gfx_active = true;
@@ -252,7 +276,12 @@ void AnnotationSession::Redraw() {
     renderer_->EndRender();
   }
 
+  // Save snapshot for future incremental renders.
+  snapshot_image_ = output_image_->Clone();
+  snapshot_count_ = total;
+
   dirty_ = false;
+  full_redraw_ = false;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,18 +348,17 @@ void AnnotationSession::ApplyMosaic(Image* image, int x, int y, int w, int h,
 
 namespace {
 
-// Horizontal box blur pass on a sub-region.
-void BoxBlurH(uint8_t* data, int stride, int /*img_w*/, int /*img_h*/,
-              int x0, int y0, int x1, int y1, int radius) {
+void BoxBlurH(uint8_t* data, int stride, int x0, int y0, int x1, int y1,
+              int radius, std::vector<uint8_t>& tmp) {
   if (radius <= 0) return;
   int diam = radius * 2 + 1;
+  int row_len = x1 - x0;
+  tmp.resize(static_cast<size_t>(row_len) * 4);
 
   for (int py = y0; py < y1; ++py) {
-    // Running sums for B, G, R, A.
     int32_t sb = 0, sg = 0, sr = 0, sa = 0;
     int cnt = 0;
 
-    // Initialize window for the first pixel in this row.
     for (int kx = x0 - radius; kx <= x0 + radius; ++kx) {
       int cx = (std::max)(x0, (std::min)(x1 - 1, kx));
       const uint8_t* p = data + py * stride + cx * 4;
@@ -338,23 +366,16 @@ void BoxBlurH(uint8_t* data, int stride, int /*img_w*/, int /*img_h*/,
       ++cnt;
     }
 
-    // We'll store results in a temp row to avoid read-after-write issues.
-    // Using stack allocation for reasonable row widths.
-    int row_len = x1 - x0;
-    std::vector<uint8_t> tmp(row_len * 4);
-
     tmp[0] = static_cast<uint8_t>(sb / cnt);
     tmp[1] = static_cast<uint8_t>(sg / cnt);
     tmp[2] = static_cast<uint8_t>(sr / cnt);
     tmp[3] = static_cast<uint8_t>(sa / cnt);
 
     for (int px = x0 + 1; px < x1; ++px) {
-      // Add right edge.
       int add_x = (std::min)(x1 - 1, px + radius);
       const uint8_t* pa = data + py * stride + add_x * 4;
       sb += pa[0]; sg += pa[1]; sr += pa[2]; sa += pa[3];
 
-      // Remove left edge.
       int rem_x = (std::max)(x0, px - radius - 1);
       const uint8_t* pr = data + py * stride + rem_x * 4;
       sb -= pr[0]; sg -= pr[1]; sr -= pr[2]; sa -= pr[3];
@@ -366,23 +387,17 @@ void BoxBlurH(uint8_t* data, int stride, int /*img_w*/, int /*img_h*/,
       tmp[idx + 3] = static_cast<uint8_t>(sa / diam);
     }
 
-    // Write back.
-    for (int px = x0; px < x1; ++px) {
-      uint8_t* dst = data + py * stride + px * 4;
-      int idx = (px - x0) * 4;
-      dst[0] = tmp[idx + 0];
-      dst[1] = tmp[idx + 1];
-      dst[2] = tmp[idx + 2];
-      dst[3] = tmp[idx + 3];
-    }
+    uint8_t* row_dst = data + py * stride + x0 * 4;
+    std::memcpy(row_dst, tmp.data(), static_cast<size_t>(row_len) * 4);
   }
 }
 
-// Vertical box blur pass on a sub-region.
-void BoxBlurV(uint8_t* data, int stride, int /*img_w*/, int /*img_h*/,
-              int x0, int y0, int x1, int y1, int radius) {
+void BoxBlurV(uint8_t* data, int stride, int x0, int y0, int x1, int y1,
+              int radius, std::vector<uint8_t>& tmp) {
   if (radius <= 0) return;
   int diam = radius * 2 + 1;
+  int col_len = y1 - y0;
+  tmp.resize(static_cast<size_t>(col_len) * 4);
 
   for (int px = x0; px < x1; ++px) {
     int32_t sb = 0, sg = 0, sr = 0, sa = 0;
@@ -394,9 +409,6 @@ void BoxBlurV(uint8_t* data, int stride, int /*img_w*/, int /*img_h*/,
       sb += p[0]; sg += p[1]; sr += p[2]; sa += p[3];
       ++cnt;
     }
-
-    int col_len = y1 - y0;
-    std::vector<uint8_t> tmp(col_len * 4);
 
     tmp[0] = static_cast<uint8_t>(sb / cnt);
     tmp[1] = static_cast<uint8_t>(sg / cnt);
@@ -448,10 +460,12 @@ void AnnotationSession::ApplyBlur(Image* image, int x, int y, int w, int h,
 
   if (x0 >= x1 || y0 >= y1) return;
 
-  // 3-pass box blur approximates Gaussian blur.
+  int max_dim = (std::max)(x1 - x0, y1 - y0);
+  std::vector<uint8_t> tmp(static_cast<size_t>(max_dim) * 4);
+
   for (int pass = 0; pass < 3; ++pass) {
-    BoxBlurH(data, stride, img_w, img_h, x0, y0, x1, y1, radius);
-    BoxBlurV(data, stride, img_w, img_h, x0, y0, x1, y1, radius);
+    BoxBlurH(data, stride, x0, y0, x1, y1, radius, tmp);
+    BoxBlurV(data, stride, x0, y0, x1, y1, radius, tmp);
   }
 }
 

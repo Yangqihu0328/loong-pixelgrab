@@ -69,11 +69,17 @@ class AnnotationSession {
   std::unique_ptr<Image> output_image_;  // Composited result.
   std::unique_ptr<AnnotationRenderer> renderer_;
 
+  // Snapshot of output_image_ after rendering shapes_[0..snapshot_count_-1].
+  // Used for incremental append-only rendering.
+  std::unique_ptr<Image> snapshot_image_;
+  int snapshot_count_ = 0;
+
   std::vector<std::unique_ptr<Shape>> shapes_;
   std::vector<AnnotationCommand> undo_stack_;
   std::vector<AnnotationCommand> redo_stack_;
   int next_id_ = 0;
-  bool dirty_ = true;  // True if output needs redraw.
+  bool dirty_ = true;           // True if output needs redraw.
+  bool full_redraw_ = true;     // True if incremental path cannot be used.
 };
 
 }  // namespace internal

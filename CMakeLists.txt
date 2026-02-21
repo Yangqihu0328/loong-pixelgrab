@@ -65,6 +65,17 @@ set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(spdlog)
 
+# stb (header-only image libraries)
+FetchContent_Declare(
+  stb
+  GIT_REPOSITORY https://github.com/nothings/stb.git
+  GIT_TAG        master
+  GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(stb)
+# stb is header-only; make its path available for targets to include.
+set(STB_INCLUDE_DIR ${stb_SOURCE_DIR} CACHE INTERNAL "")
+
 # Google Test (only when tests are enabled)
 if(PIXELGRAB_BUILD_TESTS)
   FetchContent_Declare(

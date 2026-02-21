@@ -1014,6 +1014,31 @@ PIXELGRAB_API PixelGrabError pixelgrab_translate_text(
     const char* target_lang, char** out_translated);
 
 // ---------------------------------------------------------------------------
+// Image Export
+// ---------------------------------------------------------------------------
+
+/// Supported image file formats for export.
+typedef enum PixelGrabImageFormat {
+  kPixelGrabImageFormatPng = 0,   ///< PNG (lossless)
+  kPixelGrabImageFormatJpeg = 1,  ///< JPEG (lossy)
+  kPixelGrabImageFormatBmp = 2,   ///< BMP (uncompressed)
+} PixelGrabImageFormat;
+
+/// Export an image to a file.
+///
+/// The image pixel data is converted from BGRA to RGBA internally before
+/// encoding.  For JPEG, quality defaults to 90 if quality <= 0 or > 100.
+///
+/// @param image    Source image to export.
+/// @param path     Output file path (UTF-8).
+/// @param format   File format (PNG, JPEG, BMP).
+/// @param quality  JPEG quality (1-100, ignored for PNG/BMP).
+/// @return kPixelGrabOk on success.
+PIXELGRAB_API PixelGrabError pixelgrab_image_export(
+    const PixelGrabImage* image, const char* path,
+    PixelGrabImageFormat format, int quality);
+
+// ---------------------------------------------------------------------------
 // Version information
 // ---------------------------------------------------------------------------
 

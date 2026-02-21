@@ -7,6 +7,14 @@
 namespace pixelgrab {
 namespace internal {
 
+bool TranslateBackend::IsSupported() const { return false; }
+
+std::string TranslateBackend::Translate(const char*, const char*,
+                                        const char*) {
+  last_error_detail_ = "Translation support not compiled";
+  return {};
+}
+
 class StubTranslateBackend : public TranslateBackend {
  protected:
   std::string HttpPost(const std::string&, const std::string&) override {

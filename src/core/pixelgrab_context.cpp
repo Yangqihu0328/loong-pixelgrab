@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <mutex>
 #include <utility>
 
 #include "core/logger.h"
@@ -21,6 +22,7 @@ PixelGrabContextImpl::~PixelGrabContextImpl() {
 }
 
 bool PixelGrabContextImpl::Initialize() {
+  std::lock_guard<std::mutex> lock(mu_);
   if (initialized_) {
     return true;
   }
@@ -70,12 +72,19 @@ void PixelGrabContextImpl::ClearError() {
   last_error_message_ = "No error";
 }
 
+static constexpr auto kScreensCacheTtl = std::chrono::seconds(1);
+
 void PixelGrabContextImpl::RefreshScreens() {
   if (!backend_) return;
+  auto now = std::chrono::steady_clock::now();
+  if (!cached_screens_.empty() && (now - screens_cache_time_) < kScreensCacheTtl)
+    return;
   cached_screens_ = backend_->GetScreens();
+  screens_cache_time_ = now;
 }
 
 int PixelGrabContextImpl::GetScreenCount() {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return -1;
@@ -86,6 +95,7 @@ int PixelGrabContextImpl::GetScreenCount() {
 
 PixelGrabError PixelGrabContextImpl::GetScreenInfo(
     int screen_index, PixelGrabScreenInfo* out_info) {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return kPixelGrabErrorNotInitialized;
@@ -109,6 +119,7 @@ PixelGrabError PixelGrabContextImpl::GetScreenInfo(
 }
 
 Image* PixelGrabContextImpl::CaptureScreen(int screen_index) {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return nullptr;
@@ -130,6 +141,7 @@ Image* PixelGrabContextImpl::CaptureScreen(int screen_index) {
 
 Image* PixelGrabContextImpl::CaptureRegion(int x, int y, int width,
                                            int height) {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return nullptr;
@@ -157,6 +169,7 @@ Image* PixelGrabContextImpl::CaptureRegion(int x, int y, int width,
 }
 
 Image* PixelGrabContextImpl::CaptureWindow(uint64_t window_handle) {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return nullptr;
@@ -217,7 +230,8 @@ PixelGrabError PixelGrabContextImpl::EnableDpiAwareness() {
     return kPixelGrabErrorNotSupported;
   }
 
-  // Refresh screens after DPI change — coordinates may have changed.
+  // Invalidate cache and refresh screens after DPI change.
+  screens_cache_time_ = {};
   RefreshScreens();
   ClearError();
   return kPixelGrabOk;
@@ -303,6 +317,7 @@ PixelGrabError PixelGrabContextImpl::PhysicalToLogical(
 
 PixelGrabError PixelGrabContextImpl::PickColor(int x, int y,
                                                PixelGrabColor* out_color) {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return kPixelGrabErrorNotInitialized;
@@ -312,28 +327,16 @@ PixelGrabError PixelGrabContextImpl::PickColor(int x, int y,
     return kPixelGrabErrorInvalidParam;
   }
 
-  // Capture a 1x1 region at the specified coordinates.
-  auto image = backend_->CaptureRegion(x, y, 1, 1);
-  if (!image || image->data_size() < 4) {
+  uint8_t bgra[4];
+  if (!backend_->GetPixelColor(x, y, bgra)) {
     SetError(kPixelGrabErrorCaptureFailed, "Failed to capture pixel");
     return kPixelGrabErrorCaptureFailed;
   }
 
-  const uint8_t* pixel = image->data();
-  // Image is BGRA8 format.
-  if (image->format() == kPixelGrabFormatBgra8 ||
-      image->format() == kPixelGrabFormatNative) {
-    out_color->b = pixel[0];
-    out_color->g = pixel[1];
-    out_color->r = pixel[2];
-    out_color->a = pixel[3];
-  } else {
-    // RGBA8
-    out_color->r = pixel[0];
-    out_color->g = pixel[1];
-    out_color->b = pixel[2];
-    out_color->a = pixel[3];
-  }
+  out_color->b = bgra[0];
+  out_color->g = bgra[1];
+  out_color->r = bgra[2];
+  out_color->a = bgra[3];
 
   ClearError();
   return kPixelGrabOk;
@@ -349,6 +352,7 @@ static constexpr int kMaxMagnifierRadius = 500;
 
 Image* PixelGrabContextImpl::GetMagnifier(int x, int y, int radius,
                                           int magnification) {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return nullptr;
@@ -394,19 +398,30 @@ Image* PixelGrabContextImpl::GetMagnifier(int x, int y, int radius,
   int src_stride = src->stride();
   int dst_stride = out->stride();
 
-  for (int dy = 0; dy < out_size; ++dy) {
-    int sy = dy / magnification;
-    if (sy >= src_size) sy = src_size - 1;
-    for (int dx = 0; dx < out_size; ++dx) {
-      int sx = dx / magnification;
-      if (sx >= src_size) sx = src_size - 1;
+  // Build the first output row for each source row, then memcpy duplicates.
+  for (int sy = 0; sy < src_size; ++sy) {
+    const uint8_t* src_row = src_data + sy * src_stride;
+    int first_dy = sy * magnification;
+    uint32_t* dst_row =
+        reinterpret_cast<uint32_t*>(dst_data + first_dy * dst_stride);
 
-      const uint8_t* sp = src_data + sy * src_stride + sx * 4;
-      uint8_t* dp = dst_data + dy * dst_stride + dx * 4;
-      dp[0] = sp[0];
-      dp[1] = sp[1];
-      dp[2] = sp[2];
-      dp[3] = sp[3];
+    // Fill the first output row: each source pixel → magnification copies.
+    for (int sx = 0; sx < src_size; ++sx) {
+      uint32_t pixel;
+      std::memcpy(&pixel, src_row + sx * 4, 4);
+      int dx_start = sx * magnification;
+      for (int k = 0; k < magnification; ++k) {
+        dst_row[dx_start + k] = pixel;
+      }
+    }
+
+    // Duplicate this row for the remaining (magnification - 1) output rows.
+    uint8_t* first_row_ptr = dst_data + first_dy * dst_stride;
+    for (int dup = 1; dup < magnification; ++dup) {
+      int target_dy = first_dy + dup;
+      if (target_dy >= out_size) break;
+      std::memcpy(dst_data + target_dy * dst_stride, first_row_ptr,
+                  static_cast<size_t>(out_size) * 4);
     }
   }
 
@@ -417,6 +432,30 @@ Image* PixelGrabContextImpl::GetMagnifier(int x, int y, int radius,
 // ---------------------------------------------------------------------------
 // Element detection / snapping
 // ---------------------------------------------------------------------------
+
+namespace {
+
+void FillElementRect(PixelGrabElementRect* out, int x, int y, int w, int h,
+                     const std::string& name, const std::string& role) {
+  out->x = x;
+  out->y = y;
+  out->width = w;
+  out->height = h;
+
+  std::memset(out->name, 0, sizeof(out->name));
+  if (!name.empty()) {
+    size_t len = (std::min)(name.size(), sizeof(out->name) - 1);
+    std::memcpy(out->name, name.c_str(), len);
+  }
+
+  std::memset(out->role, 0, sizeof(out->role));
+  if (!role.empty()) {
+    size_t len = (std::min)(role.size(), sizeof(out->role) - 1);
+    std::memcpy(out->role, role.c_str(), len);
+  }
+}
+
+}  // namespace
 
 PixelGrabError PixelGrabContextImpl::DetectElement(
     int x, int y, PixelGrabElementRect* out_rect) {
@@ -441,26 +480,8 @@ PixelGrabError PixelGrabContextImpl::DetectElement(
     return kPixelGrabErrorNoElement;
   }
 
-  out_rect->x = info.x;
-  out_rect->y = info.y;
-  out_rect->width = info.width;
-  out_rect->height = info.height;
-
-  // Copy name (truncate if needed).
-  std::memset(out_rect->name, 0, sizeof(out_rect->name));
-  if (!info.name.empty()) {
-    size_t copy_len =
-        (std::min)(info.name.size(), sizeof(out_rect->name) - 1);
-    std::memcpy(out_rect->name, info.name.c_str(), copy_len);
-  }
-
-  // Copy role.
-  std::memset(out_rect->role, 0, sizeof(out_rect->role));
-  if (!info.role.empty()) {
-    size_t copy_len =
-        (std::min)(info.role.size(), sizeof(out_rect->role) - 1);
-    std::memcpy(out_rect->role, info.role.c_str(), copy_len);
-  }
+  FillElementRect(out_rect, info.x, info.y, info.width, info.height,
+                  info.name, info.role);
 
   ClearError();
   return kPixelGrabOk;
@@ -480,24 +501,8 @@ int PixelGrabContextImpl::DetectElements(int x, int y,
   if (count <= 0) return count;
 
   for (int i = 0; i < count; ++i) {
-    out_rects[i].x = infos[i].x;
-    out_rects[i].y = infos[i].y;
-    out_rects[i].width = infos[i].width;
-    out_rects[i].height = infos[i].height;
-
-    std::memset(out_rects[i].name, 0, sizeof(out_rects[i].name));
-    if (!infos[i].name.empty()) {
-      size_t len =
-          (std::min)(infos[i].name.size(), sizeof(out_rects[i].name) - 1);
-      std::memcpy(out_rects[i].name, infos[i].name.c_str(), len);
-    }
-
-    std::memset(out_rects[i].role, 0, sizeof(out_rects[i].role));
-    if (!infos[i].role.empty()) {
-      size_t len =
-          (std::min)(infos[i].role.size(), sizeof(out_rects[i].role) - 1);
-      std::memcpy(out_rects[i].role, infos[i].role.c_str(), len);
-    }
+    FillElementRect(&out_rects[i], infos[i].x, infos[i].y, infos[i].width,
+                    infos[i].height, infos[i].name, infos[i].role);
   }
 
   return count;
@@ -528,24 +533,9 @@ PixelGrabError PixelGrabContextImpl::SnapToElement(
     return kPixelGrabErrorNoElement;
   }
 
-  out_rect->x = result.snapped_x;
-  out_rect->y = result.snapped_y;
-  out_rect->width = result.snapped_w;
-  out_rect->height = result.snapped_h;
-
-  std::memset(out_rect->name, 0, sizeof(out_rect->name));
-  if (!result.element.name.empty()) {
-    size_t len =
-        (std::min)(result.element.name.size(), sizeof(out_rect->name) - 1);
-    std::memcpy(out_rect->name, result.element.name.c_str(), len);
-  }
-
-  std::memset(out_rect->role, 0, sizeof(out_rect->role));
-  if (!result.element.role.empty()) {
-    size_t len =
-        (std::min)(result.element.role.size(), sizeof(out_rect->role) - 1);
-    std::memcpy(out_rect->role, result.element.role.c_str(), len);
-  }
+  FillElementRect(out_rect, result.snapped_x, result.snapped_y,
+                  result.snapped_w, result.snapped_h,
+                  result.element.name, result.element.role);
 
   ClearError();
   return kPixelGrabOk;
@@ -583,6 +573,7 @@ PixelGrabError PixelGrabContextImpl::HistoryGetEntry(
 }
 
 Image* PixelGrabContextImpl::HistoryRecapture(int history_id) {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return nullptr;
@@ -594,13 +585,10 @@ Image* PixelGrabContextImpl::HistoryRecapture(int history_id) {
     return nullptr;
   }
 
-  const Image* stored = capture_history_.GetImageById(history_id);
+  auto stored = capture_history_.GetImageById(history_id);
   if (stored) {
-    auto clone = stored->Clone();
-    if (clone) {
-      ClearError();
-      return clone.release();
-    }
+    ClearError();
+    return stored.release();
   }
 
   // Fallback: recapture from screen if no stored image is available.
@@ -617,6 +605,7 @@ Image* PixelGrabContextImpl::HistoryRecapture(int history_id) {
 }
 
 Image* PixelGrabContextImpl::RecaptureLast() {
+  std::lock_guard<std::mutex> lock(mu_);
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return nullptr;
@@ -633,13 +622,10 @@ Image* PixelGrabContextImpl::RecaptureLast() {
     return nullptr;
   }
 
-  const Image* stored = capture_history_.GetImageById(entry.id);
+  auto stored = capture_history_.GetImageById(entry.id);
   if (stored) {
-    auto clone = stored->Clone();
-    if (clone) {
-      ClearError();
-      return clone.release();
-    }
+    ClearError();
+    return stored.release();
   }
 
   // Fallback: recapture from screen if no stored image is available.

@@ -65,6 +65,20 @@ class CaptureBackend {
   /// Get DPI information for a specific screen.
   virtual bool GetDpiInfo(int screen_index, PixelGrabDpiInfo* out_info) = 0;
 
+  /// Get the color of a single pixel at screen coordinates.
+  /// Default implementation captures a 1x1 region. Platforms may override
+  /// with a lighter-weight path (e.g. GetPixel on Windows).
+  virtual bool GetPixelColor(int x, int y, uint8_t* out_bgra) {
+    auto img = CaptureRegion(x, y, 1, 1);
+    if (!img || img->data_size() < 4) return false;
+    const uint8_t* p = img->data();
+    out_bgra[0] = p[0];
+    out_bgra[1] = p[1];
+    out_bgra[2] = p[2];
+    out_bgra[3] = p[3];
+    return true;
+  }
+
  protected:
   CaptureBackend() = default;
 };

@@ -1,6 +1,7 @@
 # Core sources (always compiled)
 set(CORE_SOURCES
   core/image.cpp
+  core/image_export.cpp
   core/color_utils.cpp
   core/capture_history.cpp
   core/logger.cpp
@@ -126,6 +127,9 @@ target_include_directories(pixelgrab
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+# stb headers (image export)
+target_include_directories(pixelgrab PRIVATE ${STB_INCLUDE_DIR})
 
 # Compile definitions
 target_compile_definitions(pixelgrab PRIVATE PIXELGRAB_BUILDING)

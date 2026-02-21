@@ -3,7 +3,9 @@
 #ifndef PIXELGRAB_CORE_PIXELGRAB_CONTEXT_H_
 #define PIXELGRAB_CORE_PIXELGRAB_CONTEXT_H_
 
+#include <chrono>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -144,6 +146,7 @@ class PixelGrabContextImpl {
 
   std::unique_ptr<CaptureBackend> backend_;
   std::vector<PixelGrabScreenInfo> cached_screens_;
+  std::chrono::steady_clock::time_point screens_cache_time_{};
   bool initialized_ = false;
 
   // Element detection.
@@ -174,6 +177,12 @@ class PixelGrabContextImpl {
   // Error state (per-context, so thread-safe across contexts).
   PixelGrabError last_error_ = kPixelGrabOk;
   std::string last_error_message_ = "No error";
+
+  // Guards all mutable state on a single context instance.
+  // The public API documents that concurrent calls on the SAME context
+  // require external synchronization; this mutex provides it internally
+  // so callers sharing a context don't need their own lock.
+  mutable std::mutex mu_;
 };
 
 }  // namespace internal
