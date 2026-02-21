@@ -75,6 +75,8 @@ loong-pixelgrab/
 
 所有第三方依赖（[spdlog](https://github.com/gabime/spdlog)、[Google Test](https://github.com/google/googletest)）通过 CMake FetchContent 自动下载，无需手动安装。
 
+> **Linux 用户注意**：需要预先安装系统开发包，详见 [docs/BUILD.md](docs/BUILD.md#linux) 的 Linux 章节。
+
 ### 编译
 
 ```bash

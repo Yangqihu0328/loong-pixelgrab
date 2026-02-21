@@ -12,8 +12,11 @@
 #include <thread>
 
 // ===================================================================
-// Lightweight JSON helpers (cross-platform, no external dependency)
+// JSON helpers, version comparison & asset URL parsing
+// (Used by the Windows update checker implementation below)
 // ===================================================================
+
+#ifdef _WIN32
 
 static std::string JsonGetString(const std::string& json, const char* key) {
   std::string pattern = std::string("\"") + key + "\"";
@@ -62,10 +65,6 @@ static std::string JsonGetFirstAssetUrl(const std::string& json) {
   return JsonGetString("{" + sub, "browser_download_url");
 }
 
-// ===================================================================
-// Semantic version comparison (cross-platform)
-// ===================================================================
-
 struct SemVer {
   int major = 0, minor = 0, patch = 0;
 };
@@ -90,8 +89,6 @@ static bool IsNewer(const SemVer& latest, const SemVer& current) {
 // ===================================================================
 // Platform-specific: Windows implementation
 // ===================================================================
-
-#ifdef _WIN32
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

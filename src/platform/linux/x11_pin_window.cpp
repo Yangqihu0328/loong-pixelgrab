@@ -28,12 +28,29 @@ bool X11PinWindowBackend::SetTextContent(const char* text) {
   return valid_;
 }
 
+std::unique_ptr<Image> X11PinWindowBackend::GetImageContent() const {
+  return nullptr;
+}
+
 void X11PinWindowBackend::SetPosition(int x, int y) { (void)x; (void)y; }
 void X11PinWindowBackend::SetSize(int w, int h) { (void)w; (void)h; }
 void X11PinWindowBackend::SetOpacity(float o) { opacity_ = o; }
 float X11PinWindowBackend::GetOpacity() const { return opacity_; }
 void X11PinWindowBackend::SetVisible(bool v) { (void)v; }
 bool X11PinWindowBackend::IsVisible() const { return valid_; }
+
+void X11PinWindowBackend::GetPosition(int* out_x, int* out_y) const {
+  (void)out_x;
+  (void)out_y;
+}
+
+void X11PinWindowBackend::GetSize(int* out_width, int* out_height) const {
+  (void)out_width;
+  (void)out_height;
+}
+
+void* X11PinWindowBackend::GetNativeHandle() const { return nullptr; }
+
 bool X11PinWindowBackend::ProcessEvents() { return valid_; }
 
 std::unique_ptr<PinWindowBackend> CreatePlatformPinWindowBackend() {

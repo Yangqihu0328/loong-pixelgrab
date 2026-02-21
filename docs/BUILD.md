@@ -57,27 +57,54 @@ loong-pixelgrab 使用各平台原生系统库，**无需额外安装第三方�
 
 #### Linux
 
-需要安装的开发包：
+核心库必需的开发包：
 
 ```bash
 # Debian/Ubuntu
-sudo apt install libx11-dev libxext-dev libcairo2-dev libpango1.0-dev
+sudo apt install libx11-dev libcairo2-dev libpango1.0-dev \
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libpulse-dev
 
 # Fedora/RHEL
-sudo dnf install libX11-devel libXext-devel cairo-devel pango-devel
+sudo dnf install libX11-devel cairo-devel pango-devel \
+  gstreamer1-devel gstreamer1-plugins-base-devel pulseaudio-libs-devel
 
 # Arch Linux
-sudo pacman -S libx11 libxext cairo pango
+sudo pacman -S libx11 cairo pango gstreamer gst-plugins-base libpulse
 ```
 
-可选 (UI 元素检测)：
+可选 — OCR 支持（默认开启，`PIXELGRAB_ENABLE_OCR=ON`）：
 
 ```bash
 # Debian/Ubuntu
-sudo apt install libatspi2.0-dev libdbus-1-dev
+sudo apt install libtesseract-dev
 
 # Fedora/RHEL
-sudo dnf install at-spi2-core-devel dbus-devel
+sudo dnf install tesseract-devel
+
+# Arch Linux
+sudo pacman -S tesseract
+```
+
+示例程序（PixelGrab 桌面应用）额外依赖：
+
+```bash
+# Debian/Ubuntu
+sudo apt install libgtk-3-dev libcurl4-openssl-dev
+
+# Fedora/RHEL
+sudo dnf install gtk3-devel libcurl-devel
+
+# Arch Linux
+sudo pacman -S gtk3 curl
+```
+
+一键安装全部依赖（Debian/Ubuntu）：
+
+```bash
+sudo apt install build-essential cmake git \
+  libx11-dev libcairo2-dev libpango1.0-dev \
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libpulse-dev \
+  libtesseract-dev libgtk-3-dev libcurl4-openssl-dev
 ```
 
 ---
@@ -108,6 +135,8 @@ cmake --build build --config Release
 | `CMAKE_BUILD_TYPE` | `Release` | 构建类型: `Debug`, `Release`, `RelWithDebInfo`, `MinSizeRel` |
 | `PIXELGRAB_BUILD_EXAMPLES` | `ON` | 是否编译示例程序 |
 | `PIXELGRAB_BUILD_TESTS` | `OFF` | 是否编译单元测试 (启用后自动下载 Google Test) |
+| `PIXELGRAB_ENABLE_OCR` | `ON` | 是否启用 OCR 支持 (需要 Tesseract) |
+| `PIXELGRAB_ENABLE_TRANSLATE` | `ON` | 是否启用翻译支持 |
 
 ### 使用示例
 
@@ -236,15 +265,23 @@ build/
 ### 安装依赖
 
 ```bash
-# Debian/Ubuntu
+# Debian/Ubuntu — 一键安装全部依赖
 sudo apt update
 sudo apt install build-essential cmake git \
-  libx11-dev libxext-dev libcairo2-dev libpango1.0-dev
+  libx11-dev libcairo2-dev libpango1.0-dev \
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libpulse-dev \
+  libtesseract-dev libgtk-3-dev libcurl4-openssl-dev
 
 # Fedora
 sudo dnf groupinstall "Development Tools"
-sudo dnf install cmake git libX11-devel libXext-devel cairo-devel pango-devel
+sudo dnf install cmake git \
+  libX11-devel cairo-devel pango-devel \
+  gstreamer1-devel gstreamer1-plugins-base-devel pulseaudio-libs-devel \
+  tesseract-devel gtk3-devel libcurl-devel
 ```
+
+> 如果不需要 OCR 功能，可省略 `libtesseract-dev`，并在 CMake 配置时加上 `-DPIXELGRAB_ENABLE_OCR=OFF`。
+> 如果不编译示例程序，可省略 `libgtk-3-dev` 和 `libcurl4-openssl-dev`，并加上 `-DPIXELGRAB_BUILD_EXAMPLES=OFF`。
 
 ### 编译
 
@@ -391,7 +428,9 @@ C 和 C++ 均可直接使用 — API 使用 `extern "C"` 导出。
 确保安装了所有必要的开发包：
 
 ```bash
-sudo apt install libx11-dev libxext-dev libcairo2-dev libpango1.0-dev
+sudo apt install libx11-dev libcairo2-dev libpango1.0-dev \
+  libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libpulse-dev \
+  libtesseract-dev libgtk-3-dev libcurl4-openssl-dev
 ```
 
 ### Q: 如何只编译库而不编译示例？

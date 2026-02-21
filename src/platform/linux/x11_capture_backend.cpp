@@ -37,6 +37,7 @@ std::vector<PixelGrabScreenInfo> X11CaptureBackend::GetScreens() {
 }
 
 std::unique_ptr<Image> X11CaptureBackend::CaptureScreen(int screen_index) {
+  (void)screen_index;
   // TODO(linux): Implement using XShmGetImage.
   return nullptr;
 }
@@ -44,12 +45,14 @@ std::unique_ptr<Image> X11CaptureBackend::CaptureScreen(int screen_index) {
 std::unique_ptr<Image> X11CaptureBackend::CaptureRegion(int x, int y,
                                                         int width,
                                                         int height) {
+  (void)x; (void)y; (void)width; (void)height;
   // TODO(linux): Implement using XShmGetImage with sub-region.
   return nullptr;
 }
 
 std::unique_ptr<Image> X11CaptureBackend::CaptureWindow(
     uint64_t window_handle) {
+  (void)window_handle;
   // TODO(linux): Implement using XGetImage for the window.
   return nullptr;
 }

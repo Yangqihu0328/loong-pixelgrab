@@ -92,9 +92,13 @@ void ColorPicker::UpdateAtCursor() {
   pixelgrab_color_to_hex(&cur_color_, hex_buf_, sizeof(hex_buf_), 0);
 
   // Position the picker window near the cursor
-  GdkScreen* screen = gdk_screen_get_default();
-  int scr_w = gdk_screen_get_width(screen);
-  int scr_h = gdk_screen_get_height(screen);
+  GdkDisplay* disp = gdk_display_get_default();
+  GdkMonitor* monitor = gdk_display_get_primary_monitor(disp);
+  if (!monitor) monitor = gdk_display_get_monitor(disp, 0);
+  GdkRectangle geom;
+  gdk_monitor_get_geometry(monitor, &geom);
+  int scr_w = geom.x + geom.width;
+  int scr_h = geom.y + geom.height;
 
   int wx = cursor_x_ + 20;
   int wy = cursor_y_ + 20;

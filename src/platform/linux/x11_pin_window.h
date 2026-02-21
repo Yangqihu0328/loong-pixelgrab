@@ -17,12 +17,16 @@ class X11PinWindowBackend : public PinWindowBackend {
   bool IsValid() const override;
   bool SetImageContent(const Image* image) override;
   bool SetTextContent(const char* text) override;
+  std::unique_ptr<Image> GetImageContent() const override;
   void SetPosition(int x, int y) override;
   void SetSize(int width, int height) override;
   void SetOpacity(float opacity) override;
   float GetOpacity() const override;
   void SetVisible(bool visible) override;
   bool IsVisible() const override;
+  void GetPosition(int* out_x, int* out_y) const override;
+  void GetSize(int* out_width, int* out_height) const override;
+  void* GetNativeHandle() const override;
   bool ProcessEvents() override;
 
  private:
