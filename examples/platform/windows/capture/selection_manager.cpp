@@ -31,6 +31,8 @@ LRESULT CALLBACK SelectionManager::MouseHookProc(int code, WPARAM wp, LPARAM lp)
           if (!(self.select_dragging_ && wp == WM_LBUTTONUP)) {
             if (wp == WM_LBUTTONDOWN)
               self.toolbar_click_ = true;
+            if (wp == WM_LBUTTONUP)
+              self.toolbar_click_ = false;
             return CallNextHookEx(self.mouse_hook_, code, wp, lp);
           }
         }

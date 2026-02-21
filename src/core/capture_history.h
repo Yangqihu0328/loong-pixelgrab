@@ -6,11 +6,15 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
+#include <unordered_map>
 
 #include "pixelgrab/pixelgrab.h"
 
 namespace pixelgrab {
 namespace internal {
+
+class Image;
 
 /// A single capture history entry (region metadata only, no image data).
 struct HistoryEntry {
@@ -27,8 +31,10 @@ class CaptureHistory {
  public:
   CaptureHistory();
 
-  /// Record a new capture region. Returns the assigned entry ID.
-  int Record(int x, int y, int width, int height);
+  /// Record a new capture region with an optional image snapshot.
+  /// Returns the assigned entry ID.
+  int Record(int x, int y, int width, int height,
+             std::unique_ptr<Image> image = nullptr);
 
   /// Total number of entries.
   int Count() const;
@@ -39,6 +45,9 @@ class CaptureHistory {
   /// Find entry by its unique ID. Returns nullptr if not found.
   const HistoryEntry* FindById(int id) const;
 
+  /// Get the stored image for a given entry ID. Returns nullptr if not found.
+  const Image* GetImageById(int id) const;
+
   /// Clear all history entries.
   void Clear();
 
@@ -46,7 +55,10 @@ class CaptureHistory {
   void SetMaxCount(int max_count);
 
  private:
+  void PurgeExcess();
+
   std::deque<HistoryEntry> entries_;
+  std::unordered_map<int, std::unique_ptr<Image>> images_;
   int max_count_ = 50;
   int next_id_ = 1;
 };

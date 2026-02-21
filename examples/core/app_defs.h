@@ -132,7 +132,6 @@ enum TrayMenuId {
   kTrayPin          = 3002,
   kTraySettings     = 3003,
   kTrayAutoStart    = 3004,
-  kTrayCheckUpdate  = 3005,
   kTrayAbout        = 3006,
   kTrayExit         = 3007,
   kTrayPasteClip    = 3008,

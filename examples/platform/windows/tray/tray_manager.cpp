@@ -17,10 +17,9 @@ void TrayManager::ShowMenu() {
 
   AppendMenuW(menu, MF_STRING, kTrayCapture, capLabel);
   AppendMenuW(menu, MF_STRING, kTrayPin,     pinLabel);
-  AppendMenuW(menu, MF_STRING, kTrayPasteClip, L"Paste Clipboard");
+  AppendMenuW(menu, MF_STRING, kTrayPasteClip, T(kStr_TrayPasteClip));
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
 
-  // History submenu
   int hist_count = pixelgrab_history_count(app.Ctx());
   if (hist_count > 0) {
     HMENU histMenu = CreatePopupMenu();
@@ -37,17 +36,15 @@ void TrayManager::ShowMenu() {
       }
     }
     AppendMenuW(histMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(histMenu, MF_STRING, kTrayClearHistory, L"Clear History");
+    AppendMenuW(histMenu, MF_STRING, kTrayClearHistory, T(kStr_TrayClearHistory));
     AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(histMenu),
-                L"History");
+                T(kStr_TrayHistory));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
   }
 
   AppendMenuW(menu, MF_STRING, kTraySettings, T(kStr_TraySettings));
   UINT autoFlag = app.Settings().IsAutoStartEnabled() ? MF_CHECKED : MF_UNCHECKED;
   AppendMenuW(menu, MF_STRING | autoFlag, kTrayAutoStart, T(kStr_TrayAutoStart));
-  AppendMenuW(menu, MF_STRING, kTrayCheckUpdate, T(kStr_TrayCheckUpdate));
-  AppendMenuW(menu, MF_STRING, kTrayAbout, T(kStr_TrayAbout));
 
   HMENU langMenu = CreatePopupMenu();
   UINT zhFlag = (GetLanguage() == kLangZhCN) ? MF_CHECKED : MF_UNCHECKED;
@@ -57,6 +54,7 @@ void TrayManager::ShowMenu() {
   AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(langMenu), T(kStr_TrayLanguage));
 
   AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+  AppendMenuW(menu, MF_STRING, kTrayAbout, T(kStr_TrayAbout));
   AppendMenuW(menu, MF_STRING, kTrayExit, T(kStr_TrayExit));
 
   SetForegroundWindow(tray_hwnd_);
@@ -97,9 +95,6 @@ LRESULT CALLBACK TrayManager::WndProc(HWND hwnd, UINT msg,
         break;
       case kTrayAutoStart:
         app.Settings().SetAutoStart(!app.Settings().IsAutoStartEnabled());
-        break;
-      case kTrayCheckUpdate:
-        app.About().TriggerUpdateCheck(true);
         break;
       case kTrayAbout:
         app.About().Show();

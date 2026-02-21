@@ -79,8 +79,9 @@ class WinTranslateBackend : public TranslateBackend {
       return {};
     }
 
-    // Set 5-second timeouts (resolve, connect, send, receive).
-    WinHttpSetTimeouts(session, 5000, 5000, 5000, 5000);
+    static constexpr DWORD kHttpTimeoutMs = 5000;
+    WinHttpSetTimeouts(session, kHttpTimeoutMs, kHttpTimeoutMs,
+                       kHttpTimeoutMs, kHttpTimeoutMs);
 
     HINTERNET connect =
         WinHttpConnect(session, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);

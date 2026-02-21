@@ -4,6 +4,35 @@
 
 ---
 
+## v1.3.0
+
+### Highlights
+
+- **工程质量全面提升**：错误处理标准化、输入验证加固、依赖可选化、测试扩展、API 文档配置、安全加固。
+- **开发体验升级**：C++ RAII Wrapper、性能基准测试框架、CI/CD 自动化流水线。
+
+### New Features
+
+- **OCR/翻译依赖可选化**：新增 `PIXELGRAB_ENABLE_OCR`（默认 ON）和 `PIXELGRAB_ENABLE_TRANSLATE`（默认 ON）CMake 选项。禁用时编译 stub 后端，库体积更小且无需安装 Tesseract 或 WinHTTP 依赖。
+- **Doxygen API 文档**：新增 `docs/Doxyfile` 配置，可通过 `cd docs && doxygen Doxyfile` 生成完整的 HTML API 参考文档。
+- **C++ Header-only Wrapper (`pixelgrab.hpp`)**：零依赖的 C++17 RAII 封装层，提供 `Context`、`Image`、`ImageView`、`Annotation`、`PinWindow` 五个核心类，自动管理资源生命周期（构造即创建、析构即释放），失败操作以 `pixelgrab::Error` 异常报告错误码和消息。同时封装颜色工具函数 `to_hsv`/`to_rgb`/`to_hex`/`from_hex`。
+- **性能基准测试框架**：新增 `pixelgrab_bench` 可执行目标，包含屏幕截图、区域截图、取色、放大镜、颜色转换、窗口枚举、Context 创建/销毁等 9 项基准测试，输出 avg/min/max 毫秒耗时。通过 `cmake --build build --target pixelgrab_bench` 构建。
+- **CI/CD GitHub Actions 流水线**：
+  - `ci.yml`：push/PR 触发，Windows (MSVC) + macOS (AppleClang) + Linux (GCC) 三平台矩阵构建与测试，支持 OCR/Translate ON/OFF 组合。
+  - `release.yml`：tag 推送触发，三平台自动打包并创建 GitHub Release。
+
+### Improvements
+
+- **错误处理标准化**：所有 API 失败路径现在均通过 `pixelgrab_get_last_error()` / `pixelgrab_get_last_error_message()` 报告详细错误信息。Annotation、Pin Window、Clipboard 相关 API 补全了此前缺失的错误状态设置。
+- **输入验证加固**：Annotation 形状要求正值尺寸，Pencil 限制最大点数（100,000），Mosaic/Blur 要求正值区域和参数，Magnifier 增加 radius 上限校验（[1, 500]）及输出尺寸溢出保护（16384 像素上限），Image 创建增加维度溢出保护（256 MB 上限）。
+- **消除魔法数字**：将硬编码的默认值提取为命名常量——录屏默认帧率、码率、音频采样率、HTTP 超时、Pin 窗口默认尺寸、合成器等待时间等。
+- **线程安全文档**：在 `pixelgrab.h` 公共头文件中添加完整的线程安全说明，明确各 handle 类型的并发访问规则和推荐使用模式。
+- **API 生命周期文档**：为返回指针的 API 补充了明确的生命周期说明。
+- **安全加固**：OCR tessdata 路径增加路径穿越防护，BGRA→灰度转换增加维度溢出检查，放大镜输出增加尺寸上限保护。
+- **测试扩展**：新增 `test_ocr.cpp`（7 个测试）、`test_translate.cpp`（11 个测试）、`test_validation.cpp`（18 个测试），覆盖 OCR/翻译 API 和 Phase 1 新增验证逻辑。测试总数由 203 → 239。
+
+---
+
 ## v1.2.0
 
 ### Highlights

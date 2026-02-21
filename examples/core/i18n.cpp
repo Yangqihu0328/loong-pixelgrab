@@ -113,11 +113,13 @@ static const wchar_t* kStrings[kLangCount][kStringCount] = {
   // -- System tray menu --
   L"\x622A\x56FE (&S)\t%s",         // kStr_TrayCapture:     截图 (&S)\t%s
   L"\x8D34\x56FE (&P)\t%s",         // kStr_TrayPin:         贴图 (&P)\t%s
+  L"\x7C98\x8D34\x526A\x8D34\x677F (&V)", // kStr_TrayPasteClip:  粘贴剪贴板 (&V)
   L"\x8BBE\x7F6E (&T)...",          // kStr_TraySettings:    设置 (&T)...
   L"\x5F00\x673A\x81EA\x542F (&A)", // kStr_TrayAutoStart:   开机自启 (&A)
-  L"\x68C0\x67E5\x66F4\x65B0 (&U)", // kStr_TrayCheckUpdate: 检查更新 (&U)
   L"\x5173\x4E8E (&I)",             // kStr_TrayAbout:       关于 (&I)
   L"\x9000\x51FA (&X)",             // kStr_TrayExit:        退出 (&X)
+  L"\x5386\x53F2\x8BB0\x5F55",      // kStr_TrayHistory:     历史记录
+  L"\x6E05\x9664\x5386\x53F2",      // kStr_TrayClearHistory: 清除历史
 
   // -- About dialog --
   L"\x622A\x56FE / \x6807\x6CE8 / \x8D34\x56FE / "     // kStr_AboutDesc
@@ -248,11 +250,13 @@ static const wchar_t* kStrings[kLangCount][kStringCount] = {
   // -- System tray menu --
   L"Capture (&S)\t%s",        // kStr_TrayCapture
   L"Pin (&P)\t%s",            // kStr_TrayPin
+  L"Paste Clipboard (&V)",    // kStr_TrayPasteClip
   L"Settings (&T)...",        // kStr_TraySettings
   L"Auto Start (&A)",         // kStr_TrayAutoStart
-  L"Check Update (&U)",       // kStr_TrayCheckUpdate
   L"About (&I)",              // kStr_TrayAbout
   L"Exit (&X)",               // kStr_TrayExit
+  L"History",                  // kStr_TrayHistory
+  L"Clear History",            // kStr_TrayClearHistory
 
   // -- About dialog --
   L"Screenshot / Annotation / Pin / Record Tool",  // kStr_AboutDesc

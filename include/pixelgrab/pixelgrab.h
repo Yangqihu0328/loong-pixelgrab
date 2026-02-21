@@ -34,6 +34,28 @@ extern "C" {
 #include "pixelgrab/version.h"
 
 // ---------------------------------------------------------------------------
+// Thread safety
+// ---------------------------------------------------------------------------
+//
+// General rules:
+//   - Each PixelGrabContext is independent; different contexts may be used
+//     concurrently from different threads without external synchronization.
+//   - Operations on the SAME context, annotation, pin window, or recorder
+//     handle are NOT thread-safe.  The caller must serialize access to a
+//     single handle (e.g. with a mutex) if it is shared across threads.
+//   - PixelGrabImage objects are immutable after creation; reading image
+//     properties and data is safe from multiple threads simultaneously.
+//   - pixelgrab_set_log_level() and pixelgrab_set_log_callback() are
+//     process-global and internally synchronized.
+//   - pixelgrab_version_*() and pixelgrab_color_*() utility functions are
+//     stateless and safe to call from any thread at any time.
+//
+// Recommended pattern:
+//   Create one PixelGrabContext per thread, or protect a shared context
+//   with a mutex.
+//
+
+// ---------------------------------------------------------------------------
 // Opaque handles
 // ---------------------------------------------------------------------------
 typedef struct PixelGrabContext PixelGrabContext;
@@ -295,7 +317,9 @@ PIXELGRAB_API PixelGrabError pixelgrab_get_last_error(
     const PixelGrabContext* ctx);
 
 /// Get a human-readable error message for the last failed operation.
-/// The returned string is valid until the next API call on the same context.
+///
+/// Lifetime: The returned string is valid until the next API call on the
+/// same context.  Copy the string if you need it beyond that.
 ///
 /// @return UTF-8 error message. Never returns NULL.
 PIXELGRAB_API const char* pixelgrab_get_last_error_message(
@@ -384,8 +408,9 @@ PIXELGRAB_API int pixelgrab_image_get_stride(const PixelGrabImage* image);
 PIXELGRAB_API PixelGrabPixelFormat pixelgrab_image_get_format(
     const PixelGrabImage* image);
 
-/// Get a pointer to the raw pixel data. The pointer is valid for the lifetime
-/// of the image.
+/// Get a pointer to the raw pixel data.
+/// The returned pointer is valid for the lifetime of the PixelGrabImage.
+/// Since images are immutable, concurrent reads from multiple threads are safe.
 PIXELGRAB_API const uint8_t* pixelgrab_image_get_data(
     const PixelGrabImage* image);
 
@@ -588,8 +613,11 @@ PIXELGRAB_API int pixelgrab_annotation_can_redo(
 // --- Result ---
 
 /// Get the current annotated result image (base + all shapes).
-/// The returned pointer is owned by the session; do NOT call
-/// pixelgrab_image_destroy() on it. Valid until next mutation or destroy.
+///
+/// Lifetime: The returned pointer is owned by the annotation session.
+/// Do NOT call pixelgrab_image_destroy() on it.  The pointer is invalidated
+/// by ANY subsequent mutation (add shape, remove, undo, redo) or when the
+/// session is destroyed.  Copy the image data if you need it beyond that.
 PIXELGRAB_API const PixelGrabImage* pixelgrab_annotation_get_result(
     PixelGrabAnnotation* ann);
 

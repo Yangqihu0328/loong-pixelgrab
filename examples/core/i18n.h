@@ -91,11 +91,13 @@ enum StringId {
   // System tray menu
   kStr_TrayCapture,
   kStr_TrayPin,
+  kStr_TrayPasteClip,
   kStr_TraySettings,
   kStr_TrayAutoStart,
-  kStr_TrayCheckUpdate,
   kStr_TrayAbout,
   kStr_TrayExit,
+  kStr_TrayHistory,
+  kStr_TrayClearHistory,
 
   // About dialog
   kStr_AboutDesc,

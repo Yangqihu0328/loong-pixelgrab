@@ -109,11 +109,11 @@ if(DEFINED PIXELGRAB_GITHUB_REPO)
   )
 endif()
 
-# Copy QR code images from dist/ to build output (qrcode/ next to exe)
+# Copy QR code images to build output (qrcode/ next to exe)
 set(_qr_files
-  "${PROJECT_SOURCE_DIR}/dist/IMG_3994.JPG"
-  "${PROJECT_SOURCE_DIR}/dist/IMG_3995.JPG"
-  "${PROJECT_SOURCE_DIR}/dist/img_3996.jpg"
+  "${PROJECT_SOURCE_DIR}/docs/images/wechat.jpg"
+  "${PROJECT_SOURCE_DIR}/docs/images/wechat_pay.jpg"
+  "${PROJECT_SOURCE_DIR}/docs/images/alipay.jpg"
 )
 foreach(_qr IN LISTS _qr_files)
   if(EXISTS "${_qr}")

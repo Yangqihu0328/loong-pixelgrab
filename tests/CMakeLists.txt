@@ -11,6 +11,9 @@ set(TEST_SOURCES
   test_pin_clipboard.cpp
   test_recorder_watermark.cpp
   test_audio.cpp
+  test_ocr.cpp
+  test_translate.cpp
+  test_validation.cpp
 )
 
 # Single test executable containing all test files
@@ -42,3 +45,19 @@ include(GoogleTest)
 gtest_discover_tests(pixelgrab_tests
   DISCOVERY_MODE PRE_TEST
 )
+
+# ---------------------------------------------------------------------------
+# Performance benchmark (not part of CTest — run manually)
+# ---------------------------------------------------------------------------
+add_executable(pixelgrab_bench bench_capture.cpp)
+target_link_libraries(pixelgrab_bench PRIVATE pixelgrab)
+target_include_directories(pixelgrab_bench PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
+if(WIN32)
+  add_custom_command(TARGET pixelgrab_bench POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      $<TARGET_FILE:pixelgrab>
+      $<TARGET_FILE_DIR:pixelgrab_bench>
+    COMMENT "Copying pixelgrab.dll to bench output directory"
+  )
+endif()

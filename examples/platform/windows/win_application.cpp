@@ -297,7 +297,7 @@ int Application::Run() {
             int ddx = IntAbs(ux - selection_.SelectStart().x);
             int ddy = IntAbs(uy - selection_.SelectStart().y);
             selection_.SetSelectDragging(false);
-            if (ddx > 5 && ddy > 5) {
+            if (ddx > 5 || ddy > 5) {
               selection_.HandleRegionSelect(
                   selection_.SelectStart().x, selection_.SelectStart().y,
                   ux, uy);
@@ -351,7 +351,7 @@ int Application::Run() {
         int rw = IntAbs(static_cast<int>(cursor.x) - selection_.SelectStart().x);
         int rh = IntAbs(static_cast<int>(cursor.y) - selection_.SelectStart().y);
         selection_.SetHighlightHwnd(nullptr);
-        if (rw > kHighlightBorder * 2 && rh > kHighlightBorder * 2) {
+        if (rw > kHighlightBorder * 2 || rh > kHighlightBorder * 2) {
           overlay_.ShowHighlight(rx, ry, rw, rh);
         } else {
           overlay_.HideHighlight();

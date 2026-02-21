@@ -1,0 +1,54 @@
+# Doxyfile for loong-pixelgrab API documentation
+# Usage: cd docs && doxygen Doxyfile
+
+PROJECT_NAME           = "PixelGrab"
+PROJECT_NUMBER         = "1.3.0"
+PROJECT_BRIEF          = "Cross-platform screen capture C library"
+OUTPUT_DIRECTORY       = api-reference
+
+# Input
+INPUT                  = ../include/pixelgrab
+FILE_PATTERNS          = *.h
+RECURSIVE              = YES
+STRIP_FROM_PATH        = ../include
+
+# Extraction
+EXTRACT_ALL            = NO
+EXTRACT_STATIC         = NO
+EXTRACT_PRIVATE        = NO
+HIDE_UNDOC_MEMBERS     = YES
+HIDE_UNDOC_CLASSES     = YES
+
+# Display
+BRIEF_MEMBER_DESC      = YES
+REPEAT_BRIEF           = YES
+ALWAYS_DETAILED_SEC    = NO
+FULL_PATH_NAMES        = NO
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+TAB_SIZE               = 2
+OPTIMIZE_OUTPUT_FOR_C  = YES
+
+# Warnings
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+
+# Output formats
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_COLORSTYLE        = LIGHT
+GENERATE_LATEX         = NO
+GENERATE_MAN           = NO
+GENERATE_XML           = NO
+
+# Diagrams
+HAVE_DOT               = NO
+CLASS_DIAGRAMS         = NO
+
+# Preprocessing
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+PREDEFINED             = PIXELGRAB_API= \
+                         __cplusplus

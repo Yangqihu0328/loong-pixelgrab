@@ -42,6 +42,9 @@ int PinWindowManager::PinImage(const Image* image, int x, int y) {
   return id;
 }
 
+static constexpr int kDefaultTextPinWidth = 300;
+static constexpr int kDefaultTextPinHeight = 200;
+
 int PinWindowManager::PinText(const char* text, int x, int y) {
   if (!text) return 0;
 
@@ -51,8 +54,8 @@ int PinWindowManager::PinText(const char* text, int x, int y) {
   PinWindowConfig config;
   config.x = x;
   config.y = y;
-  config.width = 300;   // Default text window size.
-  config.height = 200;
+  config.width = kDefaultTextPinWidth;
+  config.height = kDefaultTextPinHeight;
   config.opacity = 1.0f;
   config.topmost = true;
 

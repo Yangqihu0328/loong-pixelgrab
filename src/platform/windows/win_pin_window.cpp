@@ -154,8 +154,10 @@ bool WinPinWindowBackend::Create(const PinWindowConfig& config) {
     ex_style |= WS_EX_TOPMOST;
   }
 
-  int w = (config.width > 0) ? config.width : 200;
-  int h = (config.height > 0) ? config.height : 200;
+  static constexpr int kDefaultPinWidth = 200;
+  static constexpr int kDefaultPinHeight = 200;
+  int w = (config.width > 0) ? config.width : kDefaultPinWidth;
+  int h = (config.height > 0) ? config.height : kDefaultPinHeight;
 
   hwnd_ = CreateWindowExW(
       ex_style, kPinWindowClassName, L"PixelGrab Pin",

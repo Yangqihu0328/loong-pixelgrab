@@ -9,9 +9,21 @@ set(CORE_SOURCES
   annotation/annotation_session.cpp
   detection/snap_engine.cpp
   pin/pin_window_manager.cpp
-  translate/translate_backend.cpp
-  ocr/tesseract_ocr_backend.cpp
 )
+
+# Optional: OCR module
+if(PIXELGRAB_ENABLE_OCR)
+  list(APPEND CORE_SOURCES ocr/tesseract_ocr_backend.cpp)
+else()
+  list(APPEND CORE_SOURCES ocr/ocr_stub.cpp)
+endif()
+
+# Optional: Translation module
+if(PIXELGRAB_ENABLE_TRANSLATE)
+  list(APPEND CORE_SOURCES translate/translate_backend.cpp)
+else()
+  list(APPEND CORE_SOURCES translate/translate_stub.cpp)
+endif()
 
 # Platform-specific sources
 if(WIN32)
@@ -24,13 +36,17 @@ if(WIN32)
     platform/windows/win_recorder_backend.cpp
     platform/windows/win_watermark_renderer.cpp
     platform/windows/win_audio_backend.cpp
-    platform/windows/win_translate_backend.cpp
     platform/windows/d3d11_device_manager.cpp
   )
+  if(PIXELGRAB_ENABLE_TRANSLATE)
+    list(APPEND PLATFORM_SOURCES platform/windows/win_translate_backend.cpp)
+  endif()
   set(PLATFORM_LIBS user32 gdi32 shcore gdiplus ole32 oleaut32
                     mfplat mfreadwrite mf mfuuid
-                    d3d11 dxgi d2d1 dwrite
-                    winhttp advapi32)
+                    d3d11 dxgi d2d1 dwrite)
+  if(PIXELGRAB_ENABLE_TRANSLATE)
+    list(APPEND PLATFORM_LIBS winhttp advapi32)
+  endif()
 elseif(APPLE)
   set(PLATFORM_SOURCES
     platform/macos/mac_capture_backend.mm
@@ -41,8 +57,10 @@ elseif(APPLE)
     platform/macos/mac_recorder_backend.mm
     platform/macos/mac_watermark_renderer.mm
     platform/macos/mac_audio_backend.mm
-    platform/macos/mac_translate_backend.mm
   )
+  if(PIXELGRAB_ENABLE_TRANSLATE)
+    list(APPEND PLATFORM_SOURCES platform/macos/mac_translate_backend.mm)
+  endif()
   find_library(COREGRAPHICS_LIB CoreGraphics)
   find_library(APPKIT_LIB AppKit)
   find_library(CORETEXT_LIB CoreText)
@@ -71,8 +89,10 @@ elseif(UNIX)
     platform/linux/x11_recorder_backend.cpp
     platform/linux/x11_watermark_renderer.cpp
     platform/linux/x11_audio_backend.cpp
-    platform/linux/x11_translate_backend.cpp
   )
+  if(PIXELGRAB_ENABLE_TRANSLATE)
+    list(APPEND PLATFORM_SOURCES platform/linux/x11_translate_backend.cpp)
+  endif()
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(X11 REQUIRED x11)
   pkg_check_modules(CAIRO REQUIRED cairo)
@@ -109,13 +129,21 @@ target_include_directories(pixelgrab
 
 # Compile definitions
 target_compile_definitions(pixelgrab PRIVATE PIXELGRAB_BUILDING)
+if(PIXELGRAB_ENABLE_OCR)
+  target_compile_definitions(pixelgrab PRIVATE PIXELGRAB_HAS_OCR=1)
+endif()
+if(PIXELGRAB_ENABLE_TRANSLATE)
+  target_compile_definitions(pixelgrab PRIVATE PIXELGRAB_HAS_TRANSLATE=1)
+endif()
 
 # spdlog
 target_link_libraries(pixelgrab PRIVATE spdlog::spdlog)
 
-# Tesseract OCR
-find_package(Tesseract CONFIG REQUIRED)
-target_link_libraries(pixelgrab PRIVATE Tesseract::libtesseract)
+# Tesseract OCR (optional)
+if(PIXELGRAB_ENABLE_OCR)
+  find_package(Tesseract CONFIG REQUIRED)
+  target_link_libraries(pixelgrab PRIVATE Tesseract::libtesseract)
+endif()
 
 # Platform libraries
 target_link_libraries(pixelgrab PRIVATE ${PLATFORM_LIBS})

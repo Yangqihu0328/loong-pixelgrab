@@ -68,6 +68,13 @@ std::string FindTessDataPath() {
 
   std::string tessdata = exe_dir + "/tessdata";
 
+  // Reject suspicious path components (path traversal defense).
+  if (tessdata.find("..") != std::string::npos) {
+    PIXELGRAB_LOG_WARN("Rejected tessdata path with '..' component: {}",
+                       tessdata);
+    return {};
+  }
+
   // Check if the directory exists.
 #ifdef _WIN32
   DWORD attr = GetFileAttributesA(tessdata.c_str());
@@ -130,7 +137,10 @@ std::string MapLanguage(const char* bcp47) {
 // Convert BGRA8 pixel data to 8-bit grayscale.
 std::vector<uint8_t> BgraToGray(const uint8_t* bgra, int width, int height,
                                 int stride) {
-  std::vector<uint8_t> gray(width * height);
+  if (width <= 0 || height <= 0 || stride < width * 4) return {};
+  size_t total = static_cast<size_t>(width) * static_cast<size_t>(height);
+  if (total > 256ULL * 1024 * 1024) return {};
+  std::vector<uint8_t> gray(total);
   for (int y = 0; y < height; ++y) {
     const uint8_t* row = bgra + y * stride;
     uint8_t* dst = gray.data() + y * width;

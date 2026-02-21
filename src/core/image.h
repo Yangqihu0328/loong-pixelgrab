@@ -43,6 +43,9 @@ class Image {
                                                PixelGrabPixelFormat format,
                                                std::vector<uint8_t> data);
 
+  /// Create a deep copy of this image.
+  std::unique_ptr<Image> Clone() const;
+
   /// Get a mutable pointer to pixel data (for backends to fill).
   uint8_t* mutable_data() { return data_.data(); }
 

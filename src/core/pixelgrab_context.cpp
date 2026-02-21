@@ -149,8 +149,7 @@ Image* PixelGrabContextImpl::CaptureRegion(int x, int y, int width,
     return nullptr;
   }
 
-  // Record this region in capture history.
-  capture_history_.Record(x, y, width, height);
+  capture_history_.Record(x, y, width, height, image->Clone());
 
   PIXELGRAB_LOG_INFO("Region captured: ({},{}) {}x{}", x, y, width, height);
   ClearError();
@@ -344,20 +343,36 @@ PixelGrabError PixelGrabContextImpl::PickColor(int x, int y,
 // Magnifier
 // ---------------------------------------------------------------------------
 
+static constexpr int kMinMagnification = 2;
+static constexpr int kMaxMagnification = 32;
+static constexpr int kMaxMagnifierRadius = 500;
+
 Image* PixelGrabContextImpl::GetMagnifier(int x, int y, int radius,
                                           int magnification) {
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return nullptr;
   }
-  if (radius <= 0 || magnification < 2 || magnification > 32) {
+  if (radius <= 0 || radius > kMaxMagnifierRadius) {
     SetError(kPixelGrabErrorInvalidParam,
-             "Invalid radius or magnification (radius>0, magnification 2-32)");
+             "Magnifier radius must be in range [1, 500]");
+    return nullptr;
+  }
+  if (magnification < kMinMagnification ||
+      magnification > kMaxMagnification) {
+    SetError(kPixelGrabErrorInvalidParam,
+             "Magnification must be in range [2, 32]");
     return nullptr;
   }
 
-  // Capture the source region around (x, y).
   int src_size = radius * 2 + 1;
+  int64_t out_size_64 = static_cast<int64_t>(src_size) * magnification;
+  if (out_size_64 > 16384) {
+    SetError(kPixelGrabErrorInvalidParam,
+             "Magnifier output exceeds 16384 pixel limit");
+    return nullptr;
+  }
+
   int src_x = x - radius;
   int src_y = y - radius;
 
@@ -367,8 +382,7 @@ Image* PixelGrabContextImpl::GetMagnifier(int x, int y, int radius,
     return nullptr;
   }
 
-  // Create the magnified output image using nearest-neighbor scaling.
-  int out_size = src_size * magnification;
+  int out_size = static_cast<int>(out_size_64);
   auto out = Image::Create(out_size, out_size, kPixelGrabFormatBgra8);
   if (!out) {
     SetError(kPixelGrabErrorOutOfMemory, "Failed to allocate magnifier image");
@@ -580,6 +594,16 @@ Image* PixelGrabContextImpl::HistoryRecapture(int history_id) {
     return nullptr;
   }
 
+  const Image* stored = capture_history_.GetImageById(history_id);
+  if (stored) {
+    auto clone = stored->Clone();
+    if (clone) {
+      ClearError();
+      return clone.release();
+    }
+  }
+
+  // Fallback: recapture from screen if no stored image is available.
   auto image = backend_->CaptureRegion(entry->region_x, entry->region_y,
                                        entry->region_width,
                                        entry->region_height);
@@ -609,6 +633,16 @@ Image* PixelGrabContextImpl::RecaptureLast() {
     return nullptr;
   }
 
+  const Image* stored = capture_history_.GetImageById(entry.id);
+  if (stored) {
+    auto clone = stored->Clone();
+    if (clone) {
+      ClearError();
+      return clone.release();
+    }
+  }
+
+  // Fallback: recapture from screen if no stored image is available.
   auto image = backend_->CaptureRegion(entry.region_x, entry.region_y,
                                        entry.region_width,
                                        entry.region_height);

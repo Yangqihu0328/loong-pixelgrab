@@ -99,9 +99,15 @@ void F1Toolbar::ShowMenu() {
 
   Dismiss();
 
-  int scr_w = GetSystemMetrics(SM_CXSCREEN);
-  int bar_x = (scr_w - kF1BarW) / 2;
-  int bar_y = 0;
+  POINT cur_pt;
+  GetCursorPos(&cur_pt);
+  HMONITOR mon = MonitorFromPoint(cur_pt, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO mi = {};
+  mi.cbSize = sizeof(mi);
+  GetMonitorInfoW(mon, &mi);
+  int bar_x = mi.rcWork.left +
+              (mi.rcWork.right - mi.rcWork.left - kF1BarW) / 2;
+  int bar_y = mi.rcWork.top;
 
   toolbar_ = CreateWindowExW(
       WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,

@@ -31,12 +31,17 @@ Image::Image(int width, int height, int stride, PixelGrabPixelFormat format,
       format_(format),
       data_(std::move(data)) {}
 
+static constexpr size_t kMaxImageBytes = 256ULL * 1024 * 1024;  // 256 MB
+
 // static
 std::unique_ptr<Image> Image::Create(int width, int height,
                                      PixelGrabPixelFormat format) {
+  if (width <= 0 || height <= 0) return nullptr;
   int bpp = BytesPerPixel(format);
   int stride = width * bpp;
-  std::vector<uint8_t> data(static_cast<size_t>(stride) * height, 0);
+  size_t total = static_cast<size_t>(stride) * static_cast<size_t>(height);
+  if (total > kMaxImageBytes) return nullptr;
+  std::vector<uint8_t> data(total, 0);
   return std::make_unique<Image>(width, height, stride, format,
                                  std::move(data));
 }
@@ -45,9 +50,17 @@ std::unique_ptr<Image> Image::Create(int width, int height,
 std::unique_ptr<Image> Image::CreateFromData(int width, int height, int stride,
                                              PixelGrabPixelFormat format,
                                              std::vector<uint8_t> data) {
-  assert(data.size() >= static_cast<size_t>(stride) * height);
+  if (width <= 0 || height <= 0 || stride <= 0) return nullptr;
+  size_t required = static_cast<size_t>(stride) * static_cast<size_t>(height);
+  if (data.size() < required) return nullptr;
   return std::make_unique<Image>(width, height, stride, format,
                                  std::move(data));
+}
+
+std::unique_ptr<Image> Image::Clone() const {
+  std::vector<uint8_t> data_copy(data_);
+  return std::make_unique<Image>(width_, height_, stride_, format_,
+                                 std::move(data_copy));
 }
 
 }  // namespace internal

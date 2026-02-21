@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(loong-pixelgrab
-  VERSION 1.2.0
+  VERSION 1.3.0
   DESCRIPTION "Cross-platform screen capture library"
   LANGUAGES C CXX
 )
@@ -33,6 +33,8 @@ endif()
 # Options
 option(PIXELGRAB_BUILD_EXAMPLES "Build example programs" ON)
 option(PIXELGRAB_BUILD_TESTS "Build test programs" OFF)
+option(PIXELGRAB_ENABLE_OCR "Enable OCR support (requires Tesseract)" ON)
+option(PIXELGRAB_ENABLE_TRANSLATE "Enable translation support" ON)
 
 # GitHub repository for update checker (owner/repo format)
 set(PIXELGRAB_GITHUB_REPO "Yangqihu0328/loong-pixelgrab" CACHE STRING

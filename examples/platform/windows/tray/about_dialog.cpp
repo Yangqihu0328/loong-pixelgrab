@@ -145,11 +145,11 @@ void AboutDialog::Show() {
   GetExeDirectory(exeDir, MAX_PATH);
   wchar_t path[MAX_PATH];
 
-  wsprintfW(path, L"%sqrcode\\IMG_3994.JPG", exeDir);
+  wsprintfW(path, L"%sqrcode\\wechat.jpg", exeDir);
   qr_wechat_ = LoadImageSafe(path);
-  wsprintfW(path, L"%sqrcode\\IMG_3995.JPG", exeDir);
+  wsprintfW(path, L"%sqrcode\\wechat_pay.jpg", exeDir);
   qr_wechat_pay_ = LoadImageSafe(path);
-  wsprintfW(path, L"%sqrcode\\img_3996.jpg", exeDir);
+  wsprintfW(path, L"%sqrcode\\alipay.jpg", exeDir);
   qr_alipay_pay_ = LoadImageSafe(path);
 
   int dlg_w = 750, dlg_h = 450;

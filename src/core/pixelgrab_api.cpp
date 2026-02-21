@@ -63,11 +63,11 @@ static PixelGrabImage* WrapImage(Image* raw) {
 // The opaque PixelGrabAnnotation struct wraps AnnotationSession.
 // ---------------------------------------------------------------------------
 struct PixelGrabAnnotation {
+  PixelGrabContext* ctx;  // Parent context for error reporting (non-owning).
   std::unique_ptr<AnnotationSession> session;
   PixelGrabImage result_view{nullptr};  // Non-owning wrapper for get_result.
 
   ~PixelGrabAnnotation() {
-    // Release the non-owning pointer so it doesn't double-delete.
     result_view.impl.release();
   }
 };
@@ -296,23 +296,37 @@ PixelGrabImage* pixelgrab_get_magnifier(PixelGrabContext* ctx, int x, int y,
 
 PixelGrabAnnotation* pixelgrab_annotation_create(PixelGrabContext* ctx,
                                                  const PixelGrabImage* base_image) {
-  if (!ctx || !base_image || !base_image->impl) return nullptr;
+  if (!ctx) return nullptr;
+  if (!base_image || !base_image->impl) {
+    ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                       "base_image is NULL or empty");
+    return nullptr;
+  }
 
-  // Deep copy the base image.
   const Image* src = base_image->impl.get();
   std::vector<uint8_t> data(src->data(), src->data() + src->data_size());
   auto base_copy = Image::CreateFromData(src->width(), src->height(),
                                          src->stride(), src->format(),
                                          std::move(data));
-  if (!base_copy) return nullptr;
+  if (!base_copy) {
+    ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                       "Failed to copy base image for annotation");
+    return nullptr;
+  }
 
   auto renderer = pixelgrab::internal::CreatePlatformAnnotationRenderer();
 
   auto* ann = new (std::nothrow) PixelGrabAnnotation();
-  if (!ann) return nullptr;
+  if (!ann) {
+    ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                       "Failed to allocate annotation session");
+    return nullptr;
+  }
 
+  ann->ctx = ctx;
   ann->session = std::make_unique<AnnotationSession>(std::move(base_copy),
                                                      std::move(renderer));
+  ctx->impl.ClearError();
   return ann;
 }
 
@@ -324,6 +338,12 @@ int pixelgrab_annotation_add_rect(PixelGrabAnnotation* ann, int x, int y,
                                   int width, int height,
                                   const PixelGrabShapeStyle* style) {
   if (!ann || !ann->session) return -1;
+  if (width <= 0 || height <= 0) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                               "Rectangle width and height must be positive");
+    return -1;
+  }
   auto shape = std::make_unique<pixelgrab::internal::RectShape>(
       x, y, width, height, ToInternal(style));
   return ann->session->AddShape(std::move(shape));
@@ -333,6 +353,12 @@ int pixelgrab_annotation_add_ellipse(PixelGrabAnnotation* ann, int cx, int cy,
                                      int rx, int ry,
                                      const PixelGrabShapeStyle* style) {
   if (!ann || !ann->session) return -1;
+  if (rx <= 0 || ry <= 0) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                               "Ellipse radii must be positive");
+    return -1;
+  }
   auto shape = std::make_unique<pixelgrab::internal::EllipseShape>(
       cx, cy, rx, ry, ToInternal(style));
   return ann->session->AddShape(std::move(shape));
@@ -359,7 +385,20 @@ int pixelgrab_annotation_add_arrow(PixelGrabAnnotation* ann, int x1, int y1,
 int pixelgrab_annotation_add_pencil(PixelGrabAnnotation* ann,
                                     const int* points, int point_count,
                                     const PixelGrabShapeStyle* style) {
-  if (!ann || !ann->session || !points || point_count < 2) return -1;
+  if (!ann || !ann->session) return -1;
+  if (!points || point_count < 2) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                               "Pencil requires non-NULL points with count>=2");
+    return -1;
+  }
+  static constexpr int kMaxPencilPoints = 100000;
+  if (point_count > kMaxPencilPoints) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                               "Pencil point_count exceeds maximum (100000)");
+    return -1;
+  }
   std::vector<pixelgrab::internal::Point> pts(point_count);
   for (int i = 0; i < point_count; ++i) {
     pts[i].x = points[i * 2];
@@ -373,16 +412,29 @@ int pixelgrab_annotation_add_pencil(PixelGrabAnnotation* ann,
 int pixelgrab_annotation_add_text(PixelGrabAnnotation* ann, int x, int y,
                                   const char* text, const char* font_name,
                                   int font_size, uint32_t color) {
-  if (!ann || !ann->session || !text) return -1;
+  if (!ann || !ann->session) return -1;
+  if (!text) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                               "Annotation text must not be NULL");
+    return -1;
+  }
+  if (font_size <= 0) font_size = 16;
   auto shape = std::make_unique<pixelgrab::internal::TextShape>(
-      x, y, text ? text : "", font_name ? font_name : "Arial", font_size,
-      color);
+      x, y, text, font_name ? font_name : "Arial", font_size, color);
   return ann->session->AddShape(std::move(shape));
 }
 
 int pixelgrab_annotation_add_mosaic(PixelGrabAnnotation* ann, int x, int y,
                                     int width, int height, int block_size) {
-  if (!ann || !ann->session || block_size <= 0) return -1;
+  if (!ann || !ann->session) return -1;
+  if (width <= 0 || height <= 0 || block_size <= 0) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(
+          kPixelGrabErrorInvalidParam,
+          "Mosaic width, height, and block_size must be positive");
+    return -1;
+  }
   auto shape = std::make_unique<pixelgrab::internal::MosaicEffect>(
       x, y, width, height, block_size);
   return ann->session->AddShape(std::move(shape));
@@ -390,7 +442,14 @@ int pixelgrab_annotation_add_mosaic(PixelGrabAnnotation* ann, int x, int y,
 
 int pixelgrab_annotation_add_blur(PixelGrabAnnotation* ann, int x, int y,
                                   int width, int height, int radius) {
-  if (!ann || !ann->session || radius <= 0) return -1;
+  if (!ann || !ann->session) return -1;
+  if (width <= 0 || height <= 0 || radius <= 0) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(
+          kPixelGrabErrorInvalidParam,
+          "Blur width, height, and radius must be positive");
+    return -1;
+  }
   auto shape = std::make_unique<pixelgrab::internal::BlurEffect>(
       x, y, width, height, radius);
   return ann->session->AddShape(std::move(shape));
@@ -400,6 +459,9 @@ PixelGrabError pixelgrab_annotation_remove_shape(PixelGrabAnnotation* ann,
                                                  int shape_id) {
   if (!ann || !ann->session) return kPixelGrabErrorInvalidParam;
   if (ann->session->RemoveShape(shape_id) < 0) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                               "Invalid shape_id for removal");
     return kPixelGrabErrorInvalidParam;
   }
   return kPixelGrabOk;
@@ -407,13 +469,23 @@ PixelGrabError pixelgrab_annotation_remove_shape(PixelGrabAnnotation* ann,
 
 PixelGrabError pixelgrab_annotation_undo(PixelGrabAnnotation* ann) {
   if (!ann || !ann->session) return kPixelGrabErrorInvalidParam;
-  if (!ann->session->Undo()) return kPixelGrabErrorAnnotationFailed;
+  if (!ann->session->Undo()) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorAnnotationFailed,
+                               "Nothing to undo");
+    return kPixelGrabErrorAnnotationFailed;
+  }
   return kPixelGrabOk;
 }
 
 PixelGrabError pixelgrab_annotation_redo(PixelGrabAnnotation* ann) {
   if (!ann || !ann->session) return kPixelGrabErrorInvalidParam;
-  if (!ann->session->Redo()) return kPixelGrabErrorAnnotationFailed;
+  if (!ann->session->Redo()) {
+    if (ann->ctx)
+      ann->ctx->impl.SetError(kPixelGrabErrorAnnotationFailed,
+                               "Nothing to redo");
+    return kPixelGrabErrorAnnotationFailed;
+  }
   return kPixelGrabOk;
 }
 
@@ -508,6 +580,7 @@ void pixelgrab_history_clear(PixelGrabContext* ctx) {
 
 void pixelgrab_history_set_max_count(PixelGrabContext* ctx, int max_count) {
   if (!ctx) return;
+  if (max_count <= 0) return;
   ctx->impl.HistorySetMaxCount(max_count);
 }
 
@@ -518,25 +591,54 @@ void pixelgrab_history_set_max_count(PixelGrabContext* ctx, int max_count) {
 PixelGrabPinWindow* pixelgrab_pin_image(PixelGrabContext* ctx,
                                         const PixelGrabImage* image,
                                         int x, int y) {
-  if (!ctx || !image || !image->impl) return nullptr;
+  if (!ctx) return nullptr;
+  if (!image || !image->impl) {
+    ctx->impl.SetError(kPixelGrabErrorInvalidParam,
+                       "Pin image is NULL or empty");
+    return nullptr;
+  }
   int id = ctx->impl.pin_manager().PinImage(image->impl.get(), x, y);
-  if (id <= 0) return nullptr;
+  if (id <= 0) {
+    ctx->impl.SetError(kPixelGrabErrorWindowCreateFailed,
+                       "Failed to create image pin window");
+    return nullptr;
+  }
   auto* pin = new (std::nothrow) PixelGrabPinWindow();
-  if (!pin) return nullptr;
+  if (!pin) {
+    ctx->impl.pin_manager().DestroyPin(id);
+    ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                       "Failed to allocate pin window handle");
+    return nullptr;
+  }
   pin->ctx = ctx;
   pin->pin_id = id;
+  ctx->impl.ClearError();
   return pin;
 }
 
 PixelGrabPinWindow* pixelgrab_pin_text(PixelGrabContext* ctx,
                                        const char* text, int x, int y) {
-  if (!ctx || !text) return nullptr;
+  if (!ctx) return nullptr;
+  if (!text) {
+    ctx->impl.SetError(kPixelGrabErrorInvalidParam, "Pin text is NULL");
+    return nullptr;
+  }
   int id = ctx->impl.pin_manager().PinText(text, x, y);
-  if (id <= 0) return nullptr;
+  if (id <= 0) {
+    ctx->impl.SetError(kPixelGrabErrorWindowCreateFailed,
+                       "Failed to create text pin window");
+    return nullptr;
+  }
   auto* pin = new (std::nothrow) PixelGrabPinWindow();
-  if (!pin) return nullptr;
+  if (!pin) {
+    ctx->impl.pin_manager().DestroyPin(id);
+    ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                       "Failed to allocate pin window handle");
+    return nullptr;
+  }
   pin->ctx = ctx;
   pin->pin_id = id;
+  ctx->impl.ClearError();
   return pin;
 }
 
@@ -544,13 +646,27 @@ PixelGrabPinWindow* pixelgrab_pin_clipboard(PixelGrabContext* ctx,
                                             int x, int y) {
   if (!ctx) return nullptr;
   auto* reader = ctx->impl.clipboard_reader();
-  if (!reader) return nullptr;
+  if (!reader) {
+    ctx->impl.SetError(kPixelGrabErrorNotSupported,
+                       "Clipboard reader not available");
+    return nullptr;
+  }
   int id = ctx->impl.pin_manager().PinClipboard(reader, x, y);
-  if (id <= 0) return nullptr;
+  if (id <= 0) {
+    ctx->impl.SetError(kPixelGrabErrorClipboardEmpty,
+                       "No pinnable content on clipboard");
+    return nullptr;
+  }
   auto* pin = new (std::nothrow) PixelGrabPinWindow();
-  if (!pin) return nullptr;
+  if (!pin) {
+    ctx->impl.pin_manager().DestroyPin(id);
+    ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                       "Failed to allocate pin window handle");
+    return nullptr;
+  }
   pin->ctx = ctx;
   pin->pin_id = id;
+  ctx->impl.ClearError();
   return pin;
 }
 
@@ -684,9 +800,18 @@ PixelGrabPinWindow* pixelgrab_pin_duplicate(PixelGrabPinWindow* pin,
   if (!pin || !pin->ctx) return nullptr;
   int new_id =
       pin->ctx->impl.pin_manager().Duplicate(pin->pin_id, offset_x, offset_y);
-  if (new_id <= 0) return nullptr;
+  if (new_id <= 0) {
+    pin->ctx->impl.SetError(kPixelGrabErrorWindowCreateFailed,
+                             "Failed to duplicate pin window");
+    return nullptr;
+  }
   auto* dup = new (std::nothrow) PixelGrabPinWindow();
-  if (!dup) return nullptr;
+  if (!dup) {
+    pin->ctx->impl.pin_manager().DestroyPin(new_id);
+    pin->ctx->impl.SetError(kPixelGrabErrorOutOfMemory,
+                             "Failed to allocate duplicated pin handle");
+    return nullptr;
+  }
   dup->ctx = pin->ctx;
   dup->pin_id = new_id;
   return dup;
@@ -699,15 +824,17 @@ void* pixelgrab_pin_get_native_handle(PixelGrabPinWindow* pin) {
   return backend->GetNativeHandle();
 }
 
+static constexpr int kCompositorSettleMs = 1;
+
 PixelGrabImage* pixelgrab_capture_screen_exclude_pins(PixelGrabContext* ctx,
                                                       int screen_index) {
   if (!ctx) return nullptr;
   auto& pm = ctx->impl.pin_manager();
   pm.SetVisibleAll(false);
-  // Brief sleep to let the compositor (DWM) hide the windows.
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  std::this_thread::sleep_for(std::chrono::milliseconds(kCompositorSettleMs));
   Image* raw = ctx->impl.CaptureScreen(screen_index);
   pm.SetVisibleAll(true);
+  if (!raw) return nullptr;
   return WrapImage(raw);
 }
 
@@ -717,9 +844,10 @@ PixelGrabImage* pixelgrab_capture_region_exclude_pins(PixelGrabContext* ctx,
   if (!ctx) return nullptr;
   auto& pm = ctx->impl.pin_manager();
   pm.SetVisibleAll(false);
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  std::this_thread::sleep_for(std::chrono::milliseconds(kCompositorSettleMs));
   Image* raw = ctx->impl.CaptureRegion(x, y, width, height);
   pm.SetVisibleAll(true);
+  if (!raw) return nullptr;
   return WrapImage(raw);
 }
 
@@ -831,14 +959,16 @@ PixelGrabRecorder* pixelgrab_recorder_create(
     rec->watermark = pixelgrab::internal::CreatePlatformWatermarkRenderer();
   }
 
-  // Build internal config.
+  static constexpr int kDefaultFps = 30;
+  static constexpr int kDefaultBitrate = 4000000;  // 4 Mbps
+
   rec->config.output_path = config->output_path;
   rec->config.region_x = config->region_x;
   rec->config.region_y = config->region_y;
   rec->config.region_width = config->region_width;
   rec->config.region_height = config->region_height;
-  rec->config.fps = (config->fps > 0) ? config->fps : 30;
-  rec->config.bitrate = (config->bitrate > 0) ? config->bitrate : 4000000;
+  rec->config.fps = (config->fps > 0) ? config->fps : kDefaultFps;
+  rec->config.bitrate = (config->bitrate > 0) ? config->bitrate : kDefaultBitrate;
   rec->config.auto_capture = rec->auto_capture;
 
   // Set up auto-capture dependencies.
@@ -862,8 +992,10 @@ PixelGrabRecorder* pixelgrab_recorder_create(
   if (config->audio_device_id) {
     rec->config.audio_device_id = config->audio_device_id;
   }
-  rec->config.audio_sample_rate =
-      (config->audio_sample_rate > 0) ? config->audio_sample_rate : 44100;
+  static constexpr int kDefaultAudioSampleRate = 44100;
+  rec->config.audio_sample_rate = (config->audio_sample_rate > 0)
+                                      ? config->audio_sample_rate
+                                      : kDefaultAudioSampleRate;
   if (config->audio_source != kPixelGrabAudioNone) {
     rec->config.audio_backend = ctx->impl.audio_backend();
   }
