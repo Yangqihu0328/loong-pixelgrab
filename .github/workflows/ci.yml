@@ -23,7 +23,6 @@ jobs:
         ocr: [ON, OFF]
         translate: [ON, OFF]
         exclude:
-          # Only test the OFF variants in Release to save CI minutes
           - build_type: Debug
             ocr: OFF
           - build_type: Debug
@@ -31,6 +30,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install ninja
+        run: choco install ninja -y
 
       - name: Install Tesseract (vcpkg)
         if: matrix.ocr == 'ON'
@@ -54,16 +56,60 @@ jobs:
         run: ctest -C ${{ matrix.build_type }} --output-on-failure --timeout 120
 
   # ---------------------------------------------------------------------------
+  # Linux  (GCC)
+  # ---------------------------------------------------------------------------
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libcairo2-dev libpango1.0-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libgstreamer-plugins-good1.0-dev gstreamer1.0-plugins-good \
+            libpulse-dev \
+            libtesseract-dev tesseract-ocr-eng
+
+      - name: Configure
+        run: >
+          cmake -B build -S .
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DPIXELGRAB_BUILD_TESTS=ON
+          -DPIXELGRAB_ENABLE_OCR=ON
+          -DPIXELGRAB_ENABLE_TRANSLATE=ON
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }} -j$(nproc)
+
+      - name: Test
+        working-directory: build
+        run: ctest -C ${{ matrix.build_type }} --output-on-failure --timeout 120
+
+  # ---------------------------------------------------------------------------
   # Build status gate  (required check for branch protection)
   # ---------------------------------------------------------------------------
   ci-ok:
     if: always()
-    needs: [windows]
+    needs: [windows, linux]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs succeeded
         run: |
-          if [[ "${{ needs.windows.result }}" != "success" ]]; then
+          failed=0
+          for result in "${{ needs.windows.result }}" "${{ needs.linux.result }}"; do
+            if [[ "$result" != "success" ]]; then
+              failed=1
+            fi
+          done
+          if [[ $failed -eq 1 ]]; then
             echo "One or more platform jobs failed"
             exit 1
           fi
