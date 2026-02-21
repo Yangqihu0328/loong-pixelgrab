@@ -17,7 +17,7 @@ TEST(VersionTest, VersionStringMatchesMacro) {
 }
 
 TEST(VersionTest, VersionStringMatchesExpected) {
-  EXPECT_STREQ(pixelgrab_version_string(), "1.0.1");
+  EXPECT_STREQ(pixelgrab_version_string(), "1.3.0");
 }
 
 TEST(VersionTest, MajorVersion) {
@@ -27,10 +27,10 @@ TEST(VersionTest, MajorVersion) {
 
 TEST(VersionTest, MinorVersion) {
   EXPECT_EQ(pixelgrab_version_minor(), PIXELGRAB_VERSION_MINOR);
-  EXPECT_EQ(pixelgrab_version_minor(), 0);
+  EXPECT_EQ(pixelgrab_version_minor(), 3);
 }
 
 TEST(VersionTest, PatchVersion) {
   EXPECT_EQ(pixelgrab_version_patch(), PIXELGRAB_VERSION_PATCH);
-  EXPECT_EQ(pixelgrab_version_patch(), 1);
+  EXPECT_EQ(pixelgrab_version_patch(), 0);
 }

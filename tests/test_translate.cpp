@@ -64,7 +64,11 @@ TEST_F(TranslateTest, NotSupportedWithoutConfig) {
 
 TEST_F(TranslateTest, SupportedAfterConfig) {
   pixelgrab_translate_set_config(ctx_, "baidu", "id", "key");
+#ifdef PIXELGRAB_HAS_TRANSLATE
   EXPECT_NE(pixelgrab_translate_is_supported(ctx_), 0);
+#else
+  EXPECT_EQ(pixelgrab_translate_is_supported(ctx_), 0);
+#endif
 }
 
 // ---------------------------------------------------------------------------

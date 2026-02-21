@@ -31,6 +31,14 @@ target_include_directories(pixelgrab_tests PRIVATE
   ${PROJECT_SOURCE_DIR}/include
 )
 
+# Propagate feature flags so tests can adjust expectations
+if(PIXELGRAB_ENABLE_TRANSLATE)
+  target_compile_definitions(pixelgrab_tests PRIVATE PIXELGRAB_HAS_TRANSLATE=1)
+endif()
+if(PIXELGRAB_ENABLE_OCR)
+  target_compile_definitions(pixelgrab_tests PRIVATE PIXELGRAB_HAS_OCR=1)
+endif()
+
 # Copy pixelgrab DLL next to the test executable so it can be found at runtime.
 if(WIN32)
   add_custom_command(TARGET pixelgrab_tests POST_BUILD
