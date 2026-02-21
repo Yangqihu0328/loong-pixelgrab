@@ -31,19 +31,15 @@ bool PixelGrabContextImpl::Initialize() {
 
   backend_ = CreatePlatformBackend();
   if (!backend_) {
-    SetError(kPixelGrabErrorNotSupported,
-             "Failed to create platform capture backend");
-    return false;
-  }
-
-  if (!backend_->Initialize()) {
-    SetError(kPixelGrabErrorCaptureFailed,
-             "Failed to initialize platform capture backend");
+    PIXELGRAB_LOG_WARN(
+        "Platform capture backend unavailable (no display server?)");
+  } else if (!backend_->Initialize()) {
+    PIXELGRAB_LOG_WARN(
+        "Platform capture backend failed to initialize (no display server?)");
     backend_.reset();
-    return false;
+  } else {
+    PIXELGRAB_LOG_DEBUG("Platform capture backend initialized");
   }
-
-  PIXELGRAB_LOG_DEBUG("Platform capture backend initialized");
 
   // Initialize element detection (best-effort; failure is not fatal).
   element_detector_ = CreatePlatformElementDetector();
@@ -125,6 +121,11 @@ Image* PixelGrabContextImpl::CaptureScreen(int screen_index) {
     return nullptr;
   }
 
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return nullptr;
+  }
+
   PIXELGRAB_LOG_DEBUG("CaptureScreen(screen_index={})", screen_index);
 
   auto image = backend_->CaptureScreen(screen_index);
@@ -149,6 +150,11 @@ Image* PixelGrabContextImpl::CaptureRegion(int x, int y, int width,
   if (width <= 0 || height <= 0) {
     SetError(kPixelGrabErrorInvalidParam,
              "Region width and height must be positive");
+    return nullptr;
+  }
+
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
     return nullptr;
   }
 
@@ -179,6 +185,11 @@ Image* PixelGrabContextImpl::CaptureWindow(uint64_t window_handle) {
     return nullptr;
   }
 
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return nullptr;
+  }
+
   PIXELGRAB_LOG_DEBUG("CaptureWindow(handle=0x{:X})", window_handle);
 
   auto image = backend_->CaptureWindow(window_handle);
@@ -205,6 +216,11 @@ int PixelGrabContextImpl::EnumerateWindows(PixelGrabWindowInfo* out_windows,
     return -1;
   }
 
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return -1;
+  }
+
   auto windows = backend_->EnumerateWindows();
   int count = std::min(static_cast<int>(windows.size()), max_count);
   for (int i = 0; i < count; ++i) {
@@ -223,6 +239,11 @@ PixelGrabError PixelGrabContextImpl::EnableDpiAwareness() {
   if (!initialized_) {
     SetError(kPixelGrabErrorNotInitialized, "Context not initialized");
     return kPixelGrabErrorNotInitialized;
+  }
+
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return kPixelGrabErrorNotSupported;
   }
 
   if (!backend_->EnableDpiAwareness()) {
@@ -248,6 +269,11 @@ PixelGrabError PixelGrabContextImpl::GetDpiInfo(int screen_index,
     return kPixelGrabErrorInvalidParam;
   }
 
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return kPixelGrabErrorNotSupported;
+  }
+
   if (!backend_->GetDpiInfo(screen_index, out_info)) {
     SetError(kPixelGrabErrorInvalidParam,
              "Failed to get DPI info for screen index");
@@ -268,6 +294,11 @@ PixelGrabError PixelGrabContextImpl::LogicalToPhysical(
   if (!out_physical_x || !out_physical_y) {
     SetError(kPixelGrabErrorInvalidParam, "Output pointers are NULL");
     return kPixelGrabErrorInvalidParam;
+  }
+
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return kPixelGrabErrorNotSupported;
   }
 
   PixelGrabDpiInfo dpi = {};
@@ -292,6 +323,11 @@ PixelGrabError PixelGrabContextImpl::PhysicalToLogical(
   if (!out_logical_x || !out_logical_y) {
     SetError(kPixelGrabErrorInvalidParam, "Output pointers are NULL");
     return kPixelGrabErrorInvalidParam;
+  }
+
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return kPixelGrabErrorNotSupported;
   }
 
   PixelGrabDpiInfo dpi = {};
@@ -325,6 +361,11 @@ PixelGrabError PixelGrabContextImpl::PickColor(int x, int y,
   if (!out_color) {
     SetError(kPixelGrabErrorInvalidParam, "out_color is NULL");
     return kPixelGrabErrorInvalidParam;
+  }
+
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return kPixelGrabErrorNotSupported;
   }
 
   uint8_t bgra[4];
@@ -366,6 +407,11 @@ Image* PixelGrabContextImpl::GetMagnifier(int x, int y, int radius,
       magnification > kMaxMagnification) {
     SetError(kPixelGrabErrorInvalidParam,
              "Magnification must be in range [2, 32]");
+    return nullptr;
+  }
+
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
     return nullptr;
   }
 
@@ -592,6 +638,10 @@ Image* PixelGrabContextImpl::HistoryRecapture(int history_id) {
   }
 
   // Fallback: recapture from screen if no stored image is available.
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return nullptr;
+  }
   auto image = backend_->CaptureRegion(entry->region_x, entry->region_y,
                                        entry->region_width,
                                        entry->region_height);
@@ -629,6 +679,10 @@ Image* PixelGrabContextImpl::RecaptureLast() {
   }
 
   // Fallback: recapture from screen if no stored image is available.
+  if (!backend_) {
+    SetError(kPixelGrabErrorNotSupported, "Capture backend not available");
+    return nullptr;
+  }
   auto image = backend_->CaptureRegion(entry.region_x, entry.region_y,
                                        entry.region_width,
                                        entry.region_height);
