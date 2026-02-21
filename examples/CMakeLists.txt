@@ -71,6 +71,7 @@ else()
     platform/linux/linux_i18n.cpp
     platform/linux/linux_application.cpp
     platform/linux/linux_color_picker.cpp
+    platform/linux/linux_capture_overlay.cpp
   )
   set(PLATFORM_LIBS ${GTK3_LIBRARIES} ${CURL_LIBRARIES} ${X11_LIBRARIES})
   set(PLATFORM_INCLUDE_DIRS ${GTK3_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS} ${X11_INCLUDE_DIRS})
