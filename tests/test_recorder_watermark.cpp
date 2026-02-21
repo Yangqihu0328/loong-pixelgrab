@@ -20,7 +20,7 @@ class RecorderTest : public ::testing::Test {
     ASSERT_NE(ctx_, nullptr);
 
     // Build a temp output path for recordings.
-    std::snprintf(path_, sizeof(path_), "pixelgrab_test_rec_%p.mp4", ctx_);
+    std::snprintf(path_, sizeof(path_), "pixelgrab_test_rec_%p.mp4", static_cast<void*>(ctx_));
   }
 
   void TearDown() override {

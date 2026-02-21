@@ -152,7 +152,7 @@ TEST_F(AudioTest, RecorderCreateWithAudioNone) {
   }
 
   char path[128];
-  std::snprintf(path, sizeof(path), "test_audio_none_%p.mp4", ctx_);
+  std::snprintf(path, sizeof(path), "test_audio_none_%p.mp4", static_cast<void*>(ctx_));
 
   PixelGrabRecordConfig cfg;
   std::memset(&cfg, 0, sizeof(cfg));
