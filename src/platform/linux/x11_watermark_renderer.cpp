@@ -4,6 +4,7 @@
 #include "watermark/watermark_renderer.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <string>
 
@@ -127,10 +128,71 @@ class X11WatermarkRenderer : public WatermarkRenderer {
   bool ApplyTiledTextWatermark(
       Image* image, const PixelGrabTextWatermarkConfig& config,
       float angle_deg, int spacing_x, int spacing_y) override {
-    (void)image; (void)config;
-    (void)angle_deg; (void)spacing_x; (void)spacing_y;
-    PIXELGRAB_LOG_WARN("ApplyTiledTextWatermark not implemented on Linux");
-    return false;
+    if (!image || !config.text) return false;
+
+    int w = image->width();
+    int h = image->height();
+    int stride = image->stride();
+    uint8_t* pixels = image->mutable_data();
+
+    cairo_surface_t* surface = cairo_image_surface_create_for_data(
+        pixels, CAIRO_FORMAT_ARGB32, w, h, stride);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+      PIXELGRAB_LOG_ERROR("Cairo surface creation failed (tiled watermark)");
+      cairo_surface_destroy(surface);
+      return false;
+    }
+    cairo_t* cr = cairo_create(surface);
+
+    int font_size = (config.font_size > 0) ? config.font_size : 16;
+    const char* font_name = config.font_name ? config.font_name : "Sans";
+
+    PangoLayout* layout = pango_cairo_create_layout(cr);
+    pango_layout_set_text(layout, config.text, -1);
+
+    std::string font_desc_str =
+        std::string(font_name) + " " + std::to_string(font_size);
+    PangoFontDescription* font_desc =
+        pango_font_description_from_string(font_desc_str.c_str());
+    pango_layout_set_font_description(layout, font_desc);
+    pango_font_description_free(font_desc);
+
+    int text_w = 0, text_h = 0;
+    pango_layout_get_pixel_size(layout, &text_w, &text_h);
+
+    uint32_t argb = config.color;
+    if (argb == 0) argb = 0x40FFFFFF;
+    double a = static_cast<double>((argb >> 24) & 0xFF) / 255.0;
+    double r = static_cast<double>((argb >> 16) & 0xFF) / 255.0;
+    double g = static_cast<double>((argb >> 8) & 0xFF) / 255.0;
+    double b = static_cast<double>(argb & 0xFF) / 255.0;
+
+    int sx = (spacing_x > 0) ? spacing_x : text_w + 60;
+    int sy = (spacing_y > 0) ? spacing_y : text_h + 40;
+
+    double angle_rad = angle_deg * M_PI / 180.0;
+    int diag = static_cast<int>(
+        std::sqrt(static_cast<double>(w * w + h * h)));
+
+    cairo_save(cr);
+    cairo_translate(cr, w / 2.0, h / 2.0);
+    cairo_rotate(cr, angle_rad);
+
+    for (int ty = -diag; ty < diag; ty += sy) {
+      for (int tx = -diag; tx < diag; tx += sx) {
+        cairo_save(cr);
+        cairo_translate(cr, tx, ty);
+        cairo_set_source_rgba(cr, r, g, b, a);
+        pango_cairo_show_layout(cr, layout);
+        cairo_restore(cr);
+      }
+    }
+
+    cairo_restore(cr);
+    g_object_unref(layout);
+    cairo_destroy(cr);
+    cairo_surface_destroy(surface);
+    return true;
   }
 
   bool ApplyImageWatermark(Image* target, const Image& watermark,

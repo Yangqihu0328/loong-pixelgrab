@@ -1,5 +1,5 @@
-// Copyright 2024 PixelGrab Authors. All rights reserved.
-// Linux X11 clipboard reader (stub).
+// Copyright 2026 The loong-pixelgrab Authors
+// Linux clipboard reader using X11 Selection protocol.
 
 #ifndef PIXELGRAB_PLATFORM_LINUX_X11_CLIPBOARD_H_
 #define PIXELGRAB_PLATFORM_LINUX_X11_CLIPBOARD_H_

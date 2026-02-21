@@ -5,14 +5,17 @@
 
 #include "annotation/annotation_renderer.h"
 
+typedef struct _cairo cairo_t;
+typedef struct _cairo_surface cairo_surface_t;
+
 namespace pixelgrab {
 namespace internal {
 
-/// Linux annotation renderer stub (Cairo).
+/// Linux annotation renderer using Cairo + Pango.
 class X11AnnotationRenderer : public AnnotationRenderer {
  public:
   X11AnnotationRenderer() = default;
-  ~X11AnnotationRenderer() override = default;
+  ~X11AnnotationRenderer() override;
 
   bool BeginRender(Image* target) override;
   void EndRender() override;
@@ -28,6 +31,11 @@ class X11AnnotationRenderer : public AnnotationRenderer {
                     const ShapeStyle& style) override;
   void DrawText(int x, int y, const char* text, const char* font_name,
                 int font_size, uint32_t color) override;
+
+ private:
+  Image* target_ = nullptr;
+  cairo_surface_t* surface_ = nullptr;
+  cairo_t* cr_ = nullptr;
 };
 
 }  // namespace internal
